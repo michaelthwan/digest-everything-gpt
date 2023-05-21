@@ -1,0 +1,5 @@
+gradio==3.24.1
+gradio_client==0.0.7
+openai
+Markdown
+latex2mathml

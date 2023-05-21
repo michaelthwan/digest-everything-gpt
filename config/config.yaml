@@ -1,0 +1,6 @@
+gradio:
+  concurrent: 20
+openai:
+  api_url: "https://api.openai.com/v1/chat/completions"
+  timeout_sec: 25
+  max_retry: 2
