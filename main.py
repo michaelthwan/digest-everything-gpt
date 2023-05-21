@@ -1,7 +1,7 @@
 import os
 
-from analyzer.gradio_ui_service import GradioUIService
-from analyzer.util import get_config
+from digester.gradio_ui_service import GradioUIService
+from digester.util import get_config
 
 os.makedirs("analyzer_logs", exist_ok=True)
 

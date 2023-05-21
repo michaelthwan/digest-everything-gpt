@@ -3,3 +3,4 @@ gradio_client==0.0.7
 openai
 Markdown
 latex2mathml
+everything2text4prompt

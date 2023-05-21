@@ -2,12 +2,12 @@ import glob
 import os
 import time
 
-from analyzer.chatgpt_service import LLMService, ChatGPTService
+from digester.chatgpt_service import LLMService, ChatGPTService
 
 WAITING_FOR_PF_INPUT = "Waiting for project folder input"
 
 
-class CodeAnalyzerService:
+class DigesterService:
     @staticmethod
     def write_results_to_file(history, file_name=None):
         """
@@ -87,14 +87,14 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
         # history.append(gpt_say)
         # yield chatbot, history, status, pf_md
 
-        res = CodeAnalyzerService.write_results_to_file(history)
+        res = DigesterService.write_results_to_file(history)
         chatbot.append(("Completed? ", res))
         yield chatbot, history, status, pf_md
 
     @staticmethod
     def analyze_python_project(project_folder_textbox, qa_textbox, chatbot, history):
         history = []
-        pf_md = CodeAnalyzerService.get_project_folder_md(project_folder_textbox)  # pf_md = project folder markdown
+        pf_md = DigesterService.get_project_folder_md(project_folder_textbox)  # pf_md = project folder markdown
 
         if not os.path.exists(project_folder_textbox):
             if project_folder_textbox == "":
@@ -113,7 +113,7 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
                                         b=f"Cannnot find any .py files: {project_folder_textbox}")
             yield chatbot, history, 'Normal', WAITING_FOR_PF_INPUT
             return
-        yield from CodeAnalyzerService.analyze_project(file_manifest, pf_md, project_folder, chatbot, history)
+        yield from DigesterService.analyze_project(file_manifest, pf_md, project_folder, chatbot, history)
 
     @staticmethod
     def ask_question(project_folder_textbox, qa_textbox, chatbot, history):
@@ -130,23 +130,7 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
     @staticmethod
     def test_formatting(txt, qa_textbox, chatbot, history):
         msg = r"""
-程序整体功能：CodeAnalyzerGPT工程是一个用于自动化代码分析和评审的工具。它使用了OpenAI的GPT模型对代码进行分析，然后根据一定的规则和标准来评价代码的质量和合规性。
-
-程序的构架包含以下几个模块：
-
-1. CodeAnalyzerGPT: 主程序模块，包含了代码分析和评审的主要逻辑。
-
-2. analyzer: 包含了代码分析程序的具体实现。
-
-每个文件的功能可以总结为下表：
-
-| 文件名 | 功能描述 |
-| --- | --- |
-| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\CodeAnalyzerGPT.py | 主程序入口，调用各种处理逻辑和输出结果 |
-| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\analyzer\code_analyzer.py | 代码分析器，包含了对代码文本的解析和分析逻辑 |
-| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\analyzer\code_segment.py | 对代码文本进行语句和表达式的分段处理 |
-
-
+# ASCII, table, code test
 Overall, this program consists of the following files:
 - `main.py`: This is the primary script of the program which uses NLP to analyze and summarize Python code.
 - `model.py`: This file defines the `CodeModel` class that is used by `main.py` to model the code as graphs and performs operations on them.
@@ -181,6 +165,26 @@ print('The derivative of', f, 'is:', dfdx)
 ```
 
 This code will prompt the user to enter a mathematical function in terms of x and then use the `diff()` function from SymPy to calculate its derivative with respect to x. The result will be printed on the screen.
+
+
+
+# Non-ASCII test
+
+程序整体功能：CodeAnalyzerGPT工程是一个用于自动化代码分析和评审的工具。它使用了OpenAI的GPT模型对代码进行分析，然后根据一定的规则和标准来评价代码的质量和合规性。
+
+程序的构架包含以下几个模块：
+
+1. CodeAnalyzerGPT: 主程序模块，包含了代码分析和评审的主要逻辑。
+
+2. analyzer: 包含了代码分析程序的具体实现。
+
+每个文件的功能可以总结为下表：
+
+| 文件名 | 功能描述 |
+| --- | --- |
+| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\CodeAnalyzerGPT.py | 主程序入口，调用各种处理逻辑和输出结果 |
+| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\analyzer\code_analyzer.py | 代码分析器，包含了对代码文本的解析和分析逻辑 |
+| C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\analyzer\code_segment.py | 对代码文本进行语句和表达式的分段处理 |
 
     """
         chatbot.append(("test prompt query", msg))

@@ -7,7 +7,7 @@ import traceback
 
 import requests
 
-from analyzer.util import get_config
+from digester.util import get_config
 
 timeout_bot_msg = 'Request timeout. Network error'
 LLM_MODEL = "gpt-3.5-turbo"
