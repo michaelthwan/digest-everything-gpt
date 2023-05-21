@@ -4,10 +4,16 @@ import time
 
 from digester.chatgpt_service import LLMService, ChatGPTService
 
-WAITING_FOR_PF_INPUT = "Waiting for project folder input"
+WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
 
 
-class DigesterService:
+class GradioMethodService:
+    """
+    GradioMethodService is defined as gradio functions
+    Therefore all methods here will fulfill gradio-inputs as signature/outputs as return
+    Detailed-level methods called by methods in GradioMethodService will be in other classes (e.g. DigesterService)
+    """
+
     @staticmethod
     def write_results_to_file(history, file_name=None):
         """
@@ -34,8 +40,8 @@ class DigesterService:
         return res
 
     @staticmethod
-    def get_project_folder_md(project_folder_textbox):
-        return f"Current:\n{project_folder_textbox}"
+    def get_target_status(source_textbox, project_folder_textbox):
+        return f"Current:\n [{source_textbox}] {project_folder_textbox}"
 
     @staticmethod
     def analyze_project(file_manifest, pf_md, project_folder, chatbot, history):
@@ -87,48 +93,43 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
         # history.append(gpt_say)
         # yield chatbot, history, status, pf_md
 
-        res = DigesterService.write_results_to_file(history)
+        res = GradioMethodService.write_results_to_file(history)
         chatbot.append(("Completed? ", res))
         yield chatbot, history, status, pf_md
 
     @staticmethod
-    def analyze_python_project(project_folder_textbox, qa_textbox, chatbot, history):
+    def fetch_and_summarize(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
         history = []
-        pf_md = DigesterService.get_project_folder_md(project_folder_textbox)  # pf_md = project folder markdown
+        target_status_md = GradioMethodService.get_target_status(source_textbox, target_source_textbox)  # pf_md = project folder markdown
 
-        if not os.path.exists(project_folder_textbox):
-            if project_folder_textbox == "":
-                project_folder_textbox = 'Empty input'
-                LLMService.report_exception(chatbot, history,
-                                            a=f"Project folder analyzed: {project_folder_textbox}",
-                                            b=f"Cannot find the project folder / no permission to read: {project_folder_textbox}")
-                yield chatbot, history, 'Normal', WAITING_FOR_PF_INPUT
-                return
-
-        project_folder = project_folder_textbox
-        file_manifest = [f for f in glob.glob(f'{project_folder}/**/*.py', recursive=True)]
-        if len(file_manifest) == 0:
+        if target_source_textbox == "":
+            target_source_textbox = 'Empty input'
             LLMService.report_exception(chatbot, history,
-                                        a=f"Project folder analyzed: {project_folder_textbox}",
-                                        b=f"Cannnot find any .py files: {project_folder_textbox}")
-            yield chatbot, history, 'Normal', WAITING_FOR_PF_INPUT
+                                        chat_input=f"Source target: [{source_textbox}] {target_source_textbox}",
+                                        chat_output=f"Please input the source")
+            yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
             return
-        yield from DigesterService.analyze_project(file_manifest, pf_md, project_folder, chatbot, history)
+        # TODO: invalid input checking
+
+        # project_folder = target_source_textbox
+        # file_manifest = [f for f in glob.glob(f'{project_folder}/**/*.py', recursive=True)]
+        # if len(file_manifest) == 0:
+        #     LLMService.report_exception(chatbot, history,
+        #                                 chat_input=f"Source target: [{source_textbox}] {target_source_textbox}",
+        #                                 chat_output=f"Cannnot find any .py files: {target_source_textbox}")
+        #     yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
+        #     return
+        # yield from GradioMethodService.analyze_project(file_manifest, target_status_md, project_folder, chatbot, history)
+        yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
 
     @staticmethod
-    def ask_question(project_folder_textbox, qa_textbox, chatbot, history):
+    def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
         msg = f"ask_question(`{qa_textbox}`)"
         chatbot.append(("test prompt query", msg))
         yield chatbot, history, 'Normal'
 
     @staticmethod
-    def test_asking(project_folder_textbox, qa_textbox, chatbot, history):
-        msg = f"test_ask(`{qa_textbox}`)"
-        chatbot.append(("test prompt query", msg))
-        yield chatbot, history, 'Normal'
-
-    @staticmethod
-    def test_formatting(txt, qa_textbox, chatbot, history):
+    def test_formatting(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
         msg = r"""
 # ASCII, table, code test
 Overall, this program consists of the following files:
@@ -189,3 +190,27 @@ This code will prompt the user to enter a mathematical function in terms of x an
     """
         chatbot.append(("test prompt query", msg))
         yield chatbot, history, 'Normal'
+
+    @staticmethod
+    def test_asking(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
+        msg = f"test_ask(`{qa_textbox}`)"
+        chatbot.append(("test prompt query", msg))
+        yield chatbot, history, 'Normal'
+
+
+class DigesterService:
+    @staticmethod
+    def update_ui(chatbot_input, chatbot_output, status, target_md, chatbot, history, is_append=True):
+        if is_append:
+            chatbot.append((chatbot_input, chatbot_output))
+        else:
+            chatbot[-1] = (chatbot_input, chatbot_output)
+        history.append(chatbot_input)
+        history.append(chatbot_output)
+        yield chatbot, history, status, target_md
+
+    @staticmethod
+    def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
+        yield from DigesterService.update_ui(f"Test fetchtext input [{source_textbox}] {target_source_textbox}", "Test fetchtext output",
+                                             "StatusTest", "target_md",
+                                             chatbot, history)

@@ -1,7 +1,7 @@
 import gradio as gr
 import markdown
 
-from digester.code_analyzer import DigesterService
+from digester.code_analyzer import GradioMethodService
 from digester.gradio_math_util import convert as convert_math
 
 title_html = "<h1 align=\"center\">DigestEverythingGPT</h1>"
@@ -14,16 +14,16 @@ class GradioUIService:
     def get_functions():
         functions = {
             "Fetch and summarize!": {
-                "function": DigesterService.analyze_python_project,
+                "function": GradioMethodService.fetch_and_summarize,
             },
             "Ask": {
-                "function": DigesterService.ask_question
+                "function": GradioMethodService.ask_question
             },
             "Test formatting": {
-                "function": DigesterService.test_formatting
+                "function": GradioMethodService.test_formatting
             },
             "Test asking": {
-                "function": DigesterService.test_asking
+                "function": GradioMethodService.test_asking
             },
         }
         return functions
@@ -49,7 +49,9 @@ class GradioUIService:
             with gr.Row().style(equal_height=True):
                 with gr.Column(scale=1):
                     with gr.Row():
-                        gr.Dropdown(
+                        apikey_textbox = gr.Textbox(label="OpenAI API key", placeholder="e.g. sk-xxxxx")
+                    with gr.Row():
+                        source_textbox = gr.Dropdown(
                             ["youtube", "podcast", "pdf"], label="Source", info="Choose your content provider"
                         )
                     with gr.Row():
@@ -84,7 +86,7 @@ class GradioUIService:
             functions = GradioUIService.post_define_functions(functions, folder_md)
             #### handle click(=submit) and cancel behaviour
             # Standard inputs/outputs (global for all actions)
-            inputs = [source_target_textbox, qa_textbox, chatbot, history]
+            inputs = [apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history]
             outputs = [chatbot, history, status_md]
             # project_folder_textbox
             fn_key = "Fetch and summarize!"

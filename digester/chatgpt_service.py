@@ -23,10 +23,10 @@ config = get_config()
 
 class LLMService:
     @staticmethod
-    def report_exception(chatbot, history, a, b):
-        chatbot.append((a, b))
-        history.append(a)
-        history.append(b)
+    def report_exception(chatbot, history, chat_input, chat_output):
+        chatbot.append((chat_input, chat_output))
+        history.append(chat_input)
+        history.append(chat_output)
 
     @staticmethod
     def get_full_error(chunk, stream_response):
@@ -100,14 +100,14 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def call_chatgpt(i_say, i_say_show_user, chatbot, history, status, pf_md):
+    def call_chatgpt(i_say, i_say_show_user, chatbot, history, status, target_md):
         chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
-        yield chatbot, history, status, pf_md
-        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(pf_md, i_say, i_say_show_user, chatbot, history=[])
+        yield chatbot, history, status, target_md
+        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(target_md, i_say, i_say_show_user, chatbot, history=[])
         chatbot[-1] = (i_say_show_user, gpt_say)
         history.append(i_say_show_user)
         history.append(gpt_say)
-        yield chatbot, history, status, pf_md
+        yield chatbot, history, status, target_md
 
     # @staticmethod
     # def ask_chatgpt(inputs, chatbot=[], history=[]):
