@@ -1,4 +1,4 @@
-import glob
+from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 import os
 import time
 
@@ -110,16 +110,6 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
             yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
             return
         # TODO: invalid input checking
-
-        # project_folder = target_source_textbox
-        # file_manifest = [f for f in glob.glob(f'{project_folder}/**/*.py', recursive=True)]
-        # if len(file_manifest) == 0:
-        #     LLMService.report_exception(chatbot, history,
-        #                                 chat_input=f"Source target: [{source_textbox}] {target_source_textbox}",
-        #                                 chat_output=f"Cannnot find any .py files: {target_source_textbox}")
-        #     yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
-        #     return
-        # yield from GradioMethodService.analyze_project(file_manifest, target_status_md, project_folder, chatbot, history)
         yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
 
     @staticmethod
@@ -210,7 +200,30 @@ class DigesterService:
         yield chatbot, history, status, target_md
 
     @staticmethod
+    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
+        pass
+
+    @staticmethod
     def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
-        yield from DigesterService.update_ui(f"Test fetchtext input [{source_textbox}] {target_source_textbox}", "Test fetchtext output",
-                                             "StatusTest", "target_md",
-                                             chatbot, history)
+        converter = Everything2Text4Prompt(openai_api_key=apikey_textbox)
+        text, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
+        chatbot_input = f"Converting source to text for [{source_textbox}] {target_source_textbox} ..."
+        target_md = f"[{source_textbox}] {target_source_textbox}"
+        if is_success:
+            chatbot_output = f"""
+Extracted text successfully:
+
+{text}
+            """
+            yield from DigesterService.update_ui(chatbot_input, chatbot_output,
+                                                 "Success", target_md,
+                                                 chatbot, history)
+            yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox,
+                                                      chatbot, history)
+        else:
+            chatbot_output = f"""
+Text extraction failed ({error_msg})
+            """
+            yield from DigesterService.update_ui(chatbot_input, chatbot_output,
+                                                 "Failed", target_md,
+                                                 chatbot, history)

@@ -2,7 +2,6 @@ import gradio as gr
 import markdown
 
 from digester.code_analyzer import GradioMethodService
-from digester.gradio_math_util import convert as convert_math
 
 title_html = "<h1 align=\"center\">DigestEverythingGPT</h1>"
 
@@ -43,7 +42,6 @@ class GradioUIService:
 
         gr.Chatbot.postprocess = GradioUIService.format_io
         functions = GradioUIService.get_functions()
-        # with gr.Blocks(theme=gr.themes.Soft(), css=GradioUIService.get_css()) as demo:
         with gr.Blocks(theme=GradioUIService.get_theme(), css=GradioUIService.get_css()) as demo:
             gr.HTML(title_html)
             with gr.Row().style(equal_height=True):
@@ -53,6 +51,7 @@ class GradioUIService:
                     with gr.Row():
                         source_textbox = gr.Dropdown(
                             ["youtube", "podcast", "pdf"], label="Source", info="Choose your content provider"
+                            # TODO: dynamic list from everything2text4prompt
                         )
                     with gr.Row():
                         source_target_textbox = gr.Textbox(show_label=True, label="URL / source target",
@@ -63,7 +62,7 @@ class GradioUIService:
                         gr.Markdown(f"Status: ")
                         status_md = gr.Markdown(f"Normal")
                     with gr.Row():
-                        folder_md = gr.Markdown(f"Waiting for project folder input")
+                        folder_md = gr.Markdown(f"Waiting for source target input")
                     with gr.Row():
                         qa_textbox = gr.Textbox(show_label=False, placeholder="Ask questions").style(container=False)
                     with gr.Row():
@@ -73,7 +72,7 @@ class GradioUIService:
                         reset_btn.style(size="sm")
                         stop_btn = gr.Button("Stop", variant="secondary")
                         stop_btn.style(size="sm")
-                    with gr.Accordion("debug", open=True) as area_crazy_fn:
+                    with gr.Accordion("debug", open=True):
                         with gr.Row():
                             functions["Test formatting"]["btn"] = gr.Button("Test formatting")
                             functions["Test asking"]["btn"] = gr.Button("Test asking")
@@ -88,7 +87,7 @@ class GradioUIService:
             # Standard inputs/outputs (global for all actions)
             inputs = [apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history]
             outputs = [chatbot, history, status_md]
-            # project_folder_textbox
+            # fetch_and_summarize_textbox
             fn_key = "Fetch and summarize!"
             analyze_code_base_args = dict(fn=functions[fn_key]["function"], inputs=inputs, outputs=[*outputs, folder_md])
             cancel_handles.append(source_target_textbox.submit(**analyze_code_base_args))
@@ -147,15 +146,16 @@ class GradioUIService:
 
         def markdown_convertion(txt):
             """
-            Convert markdown text to HTML format. If there are math formulas, convert them to HTML format first.
+            Convert markdown text to HTML format
             """
             pre = '<div class="markdown-body">'
             suf = '</div>'
-            if ('$' in txt) and ('```' not in txt):
-                return pre + markdown.markdown(txt, extensions=['fenced_code', 'tables']) + '<br><br>' + markdown.markdown(convert_math(txt, splitParagraphs=False),
-                                                                                                                           extensions=['fenced_code', 'tables']) + suf
-            else:
-                return pre + markdown.markdown(txt, extensions=['fenced_code', 'tables']) + suf
+            # if ('$' in txt) and ('```' not in txt):
+            #     return pre + markdown.markdown(txt, extensions=['fenced_code', 'tables']) + '<br><br>' + markdown.markdown(convert_math(txt, splitParagraphs=False),
+            #                                                                                                                extensions=['fenced_code', 'tables']) + suf
+            # else:
+            #     return pre + markdown.markdown(txt, extensions=['fenced_code', 'tables']) + suf
+            return pre + markdown.markdown(txt, extensions=['fenced_code', 'tables']) + suf
 
         if y is None or y == []: return []
         i_ask, gpt_reply = y[-1]
