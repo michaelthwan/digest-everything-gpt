@@ -1,7 +1,7 @@
 import gradio as gr
 import markdown
 
-from digester.code_analyzer import GradioMethodService
+from digester.core_service import GradioMethodService
 
 title_html = "<h1 align=\"center\">DigestEverythingGPT</h1>"
 

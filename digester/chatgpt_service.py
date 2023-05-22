@@ -100,14 +100,15 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def call_chatgpt(i_say, i_say_show_user, chatbot, history, status, target_md):
+    def call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md):
         chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
-        yield chatbot, history, status, target_md
-        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(target_md, i_say, i_say_show_user, chatbot, history=[])
+        status = "Success"
+        yield chatbot, history, status, source_md
+        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, history=[])
         chatbot[-1] = (i_say_show_user, gpt_say)
         history.append(i_say_show_user)
         history.append(gpt_say)
-        yield chatbot, history, status, target_md
+        yield chatbot, history, status, source_md
 
     # @staticmethod
     # def ask_chatgpt(inputs, chatbot=[], history=[]):
@@ -192,7 +193,7 @@ class ChatGPTService:
     #                     return
 
     @staticmethod
-    def predict_no_ui_but_counting_down(pf_md, i_say, i_say_show_user, chatbot, history=[]):
+    def predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, history=[]):
 
         TIMEOUT_SECONDS, MAX_RETRY = config['openai']['timeout_sec'], config['openai']['max_retry']
         # When multi-threaded, you need a mutable structure to pass information between different threads
@@ -231,8 +232,12 @@ class ChatGPTService:
         cnt = 0
         while thread_name.is_alive():
             cnt += 1
-            chatbot[-1] = (i_say_show_user, f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}" + ''.join(['.'] * (cnt % 4)))
-            yield chatbot, history, 'Normal', pf_md
+            chatbot[-1] = (i_say_show_user, f"""
+f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
+{mutable_list[0]}
+            """)
+
+            yield chatbot, history, 'Normal', source_md
             time.sleep(1)
         # Get the output of gpt out of the mutable
         gpt_say = mutable_list[0]

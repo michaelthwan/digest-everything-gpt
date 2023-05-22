@@ -100,7 +100,6 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
     @staticmethod
     def fetch_and_summarize(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
         history = []
-        target_status_md = GradioMethodService.get_target_status(source_textbox, target_source_textbox)  # pf_md = project folder markdown
 
         if target_source_textbox == "":
             target_source_textbox = 'Empty input'
@@ -110,7 +109,10 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
             yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
             return
         # TODO: invalid input checking
-        yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
+        is_success, text_content = yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
+        if not is_success:
+            return
+        yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
 
     @staticmethod
     def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
@@ -200,26 +202,31 @@ class DigesterService:
         yield chatbot, history, status, target_md
 
     @staticmethod
-    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
-        pass
+    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history):
+        prefix = f"""
+Please summarize the following {source_textbox} using markdown.
+Be comprehensive and precise. Use point-form if necessary.
+        """
+        # TODO prompt engineering
+        i_say = prefix + f"{source_textbox} content: {text_content}"
+        i_say_show_user = prefix + f"{source_textbox} content: (Ommitted)"
+        yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
 
     @staticmethod
     def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
         converter = Everything2Text4Prompt(openai_api_key=apikey_textbox)
-        text, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
+        text_content, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
         chatbot_input = f"Converting source to text for [{source_textbox}] {target_source_textbox} ..."
         target_md = f"[{source_textbox}] {target_source_textbox}"
         if is_success:
             chatbot_output = f"""
 Extracted text successfully:
 
-{text}
+{text_content}
             """
             yield from DigesterService.update_ui(chatbot_input, chatbot_output,
                                                  "Success", target_md,
                                                  chatbot, history)
-            yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox,
-                                                      chatbot, history)
         else:
             chatbot_output = f"""
 Text extraction failed ({error_msg})
@@ -227,3 +234,4 @@ Text extraction failed ({error_msg})
             yield from DigesterService.update_ui(chatbot_input, chatbot_output,
                                                  "Failed", target_md,
                                                  chatbot, history)
+        return is_success, text_content
