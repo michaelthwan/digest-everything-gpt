@@ -1,4 +1,5 @@
 from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
+from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
 import os
 import time
 
@@ -40,64 +41,6 @@ class GradioMethodService:
         return res
 
     @staticmethod
-    def get_target_status(source_textbox, project_folder_textbox):
-        return f"Current:\n [{source_textbox}] {project_folder_textbox}"
-
-    @staticmethod
-    def analyze_project(file_manifest, pf_md, project_folder, chatbot, history):
-        print('begin analysis on:', file_manifest)
-        for index, fp in enumerate(file_manifest):
-            status = 'Normal'
-            with open(fp, 'r', encoding='utf-8') as f:
-                file_content = f.read()
-
-            # for each file, ask chatgpt
-            prefix = "Please analyze the following files.\n" if index == 0 else ""
-            i_say = prefix + f'Please make a summary of the following program file. File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}```'
-            i_say_show_user = prefix + f'[{index + 1}/{len(file_manifest)}] Please make a summary of the following program file: {os.path.abspath(fp)}'
-
-            yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, status, pf_md)
-
-            i_say = """
-Please describe each function with format
-
-- <method name>(<input>) -> <output>:
-<description> 
-- <method name>(<input>) -> <output>:
-<description>
-File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}```"""
-            i_say_show_user = f'[{index + 1}/{len(file_manifest)}] Please describe each function: {os.path.abspath(fp)}'
-            yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, status, pf_md)
-
-            # chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
-            # yield chatbot, history, status, pf_md
-            # gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(pf_md, i_say, i_say_show_user, chatbot, history=[])
-            # chatbot[-1] = (i_say_show_user, gpt_say)
-            # history.append(i_say_show_user)
-            # history.append(gpt_say)
-            # yield chatbot, history, status, pf_md
-
-            time.sleep(2)
-
-        # Overall, ask chatgpt
-        all_file = ', '.join([os.path.relpath(fp, project_folder) for index, fp in enumerate(file_manifest)])
-        i_say = f'Based on your own analysis above, make a summary of the overall functionality and architecture of the program. Then use a markdown table to explain the functionality of each file (including {all_file}).'
-        i_say_show_user = i_say
-
-        yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, status, pf_md)
-        # chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
-        # yield chatbot, history, status, pf_md
-        # gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(pf_md, i_say, i_say, chatbot, history=history)
-        # chatbot[-1] = (i_say_show_user, gpt_say)
-        # history.append(i_say_show_user)
-        # history.append(gpt_say)
-        # yield chatbot, history, status, pf_md
-
-        res = GradioMethodService.write_results_to_file(history)
-        chatbot.append(("Completed? ", res))
-        yield chatbot, history, status, pf_md
-
-    @staticmethod
     def fetch_and_summarize(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
         history = []
 
@@ -109,10 +52,11 @@ File name: {os.path.relpath(fp, project_folder)}. Source code: ```{file_content}
             yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
             return
         # TODO: invalid input checking
-        is_success, text_content = yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
+        is_success, text_data = yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
         if not is_success:
             return
-        yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
+        yield from PromptEngineeringStrategy.execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+        # yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
 
     @staticmethod
     def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
@@ -193,6 +137,10 @@ This code will prompt the user to enter a mathematical function in terms of x an
 class DigesterService:
     @staticmethod
     def update_ui(chatbot_input, chatbot_output, status, target_md, chatbot, history, is_append=True):
+        """
+        For instant chatbot_input+output
+        Not suitable if chatbot_output have delay / processing time
+        """
         if is_append:
             chatbot.append((chatbot_input, chatbot_output))
         else:
@@ -202,20 +150,12 @@ class DigesterService:
         yield chatbot, history, status, target_md
 
     @staticmethod
-    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history):
-        prefix = f"""
-Please summarize the following {source_textbox} using markdown.
-Be comprehensive and precise. Use point-form if necessary.
-        """
-        # TODO prompt engineering
-        i_say = prefix + f"{source_textbox} content: {text_content}"
-        i_say_show_user = prefix + f"{source_textbox} content: (Ommitted)"
-        yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
-
-    @staticmethod
-    def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history):
+    def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history) -> (bool, BaseData):
+        """Fetch text from source using everything2text4prompt. No OpenAI call here"""
         converter = Everything2Text4Prompt(openai_api_key=apikey_textbox)
-        text_content, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
+        text_data, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
+        text_content = text_data.full_content
+
         chatbot_input = f"Converting source to text for [{source_textbox}] {target_source_textbox} ..."
         target_md = f"[{source_textbox}] {target_source_textbox}"
         if is_success:
@@ -234,4 +174,33 @@ Text extraction failed ({error_msg})
             yield from DigesterService.update_ui(chatbot_input, chatbot_output,
                                                  "Failed", target_md,
                                                  chatbot, history)
-        return is_success, text_content
+        return is_success, text_data
+
+
+class PromptEngineeringStrategy:
+    @staticmethod
+    def execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
+        if source_textbox == 'youtube':
+            yield from PromptEngineeringStrategy.execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+        elif source_textbox == 'podcast':
+            yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+
+    @staticmethod
+    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history):
+        prefix = f"""
+Please summarize the following {source_textbox} using markdown.
+Be comprehensive and precise. Use point-form if necessary.
+        """
+        # TODO prompt engineering
+        i_say = prefix + f"{source_textbox} content: {text_content}"
+        i_say_show_user = prefix + f"{source_textbox} content: (Ommitted)"
+        yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
+
+    @staticmethod
+    def execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+        text_content = text_data.full_content
+        yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
+
+    @staticmethod
+    def execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+        pass
