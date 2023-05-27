@@ -11,7 +11,9 @@ WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
 class GradioMethodService:
     """
     GradioMethodService is defined as gradio functions
-    Therefore all methods here will fulfill gradio-inputs as signature/outputs as return
+    Therefore all methods here will fulfill
+    - gradio.inputs as signature
+    - gradio.outputs as return
     Detailed-level methods called by methods in GradioMethodService will be in other classes (e.g. DigesterService)
     """
 
@@ -54,9 +56,8 @@ class GradioMethodService:
         # TODO: invalid input checking
         is_success, text_data = yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
         if not is_success:
-            return
+            return  # TODO: error handling testing
         yield from PromptEngineeringStrategy.execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
-        # yield from DigesterService.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
 
     @staticmethod
     def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
@@ -204,3 +205,16 @@ Be comprehensive and precise. Use point-form if necessary.
     @staticmethod
     def execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
         pass
+
+
+if __name__ == '__main__':
+    input_1 = """Give me 2 ideas for the summer"""
+    # input_1 = """Explain more on the first idea"""
+    response_1 = ChatGPTService.predict_no_ui_long_connection(input_1)
+    print(response_1)
+
+    input_2 = """
+For the first idea, suggest some step by step planning for me
+    """
+    response_2 = ChatGPTService.predict_no_ui_long_connection(input_2, [input_1, response_1])
+    print(response_2)

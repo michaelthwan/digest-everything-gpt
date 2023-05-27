@@ -9,9 +9,9 @@ import requests
 
 from digester.util import get_config
 
-timeout_bot_msg = 'Request timeout. Network error'
+timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
-SYSTEM_PROMPT = "be a coding copilot and assist developer's code reading."
+SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
 
 # This piece of code heavily reference
 # - https://github.com/GaiZhenbiao/ChuanhuChatGPT
@@ -80,7 +80,9 @@ class LLMService:
             "frequency_penalty": 0,
         }
 
-        print(f" {LLM_MODEL} : {conversation_cnt} : {inputs}")
+        print(f"generate_payload() LLM: {LLM_MODEL}, conversation_cnt: {conversation_cnt} : {inputs}")
+        print(f"[INPUT]\n{inputs}")
+        print(f"[OUTPUT]")
         return headers, payload
 
 
