@@ -8,6 +8,21 @@ from digester.chatgpt_service import LLMService, ChatGPTService
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
 
 
+class GradioInputs:
+    """
+    This DTO class formalized the format of "inputs" from gradio and prevent long signature
+    It will be converted in GradioMethodService.
+    """
+
+    def __init__(self, apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history):
+        self.apikey_textbox = apikey_textbox
+        self.source_textbox = source_textbox
+        self.source_target_textbox = source_target_textbox
+        self.qa_textbox = qa_textbox
+        self.chatbot = chatbot
+        self.history = history
+
+
 class GradioMethodService:
     """
     GradioMethodService is defined as gradio functions
@@ -43,30 +58,33 @@ class GradioMethodService:
         return res
 
     @staticmethod
-    def fetch_and_summarize(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
-        history = []
+    def fetch_and_summarize(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history)
+        g_inputs.history = []
 
-        if target_source_textbox == "":
-            target_source_textbox = 'Empty input'
-            LLMService.report_exception(chatbot, history,
-                                        chat_input=f"Source target: [{source_textbox}] {target_source_textbox}",
+        if g_inputs.source_target_textbox == "":
+            g_inputs.source_target_textbox = 'Empty input'
+            LLMService.report_exception(g_inputs.chatbot, g_inputs.history,
+                                        chat_input=f"Source target: [{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
                                         chat_output=f"Please input the source")
-            yield chatbot, history, 'Normal', WAITING_FOR_TARGET_INPUT
+            yield g_inputs.chatbot, g_inputs.history, 'Normal', WAITING_FOR_TARGET_INPUT
             return
         # TODO: invalid input checking
-        is_success, text_data = yield from DigesterService.fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history)
+        is_success, text_data = yield from DigesterService.fetch_text(g_inputs)
         if not is_success:
             return  # TODO: error handling testing
-        yield from PromptEngineeringStrategy.execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+        yield from PromptEngineeringStrategy.execute_prompt_chain(g_inputs, text_data)
 
     @staticmethod
     def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
         msg = f"ask_question(`{qa_textbox}`)"
-        chatbot.append(("test prompt query", msg))
-        yield chatbot, history, 'Normal'
+        g_inputs.chatbot.append(("test prompt query", msg))
+        yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
     @staticmethod
     def test_formatting(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
         msg = r"""
 # ASCII, table, code test
 Overall, this program consists of the following files:
@@ -125,14 +143,15 @@ This code will prompt the user to enter a mathematical function in terms of x an
 | C:\github\!CodeAnalyzerGPT\CodeAnalyzerGPT\analyzer\code_segment.py | 对代码文本进行语句和表达式的分段处理 |
 
     """
-        chatbot.append(("test prompt query", msg))
-        yield chatbot, history, 'Normal'
+        g_inputs.chatbot.append(("test prompt query", msg))
+        yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
     @staticmethod
     def test_asking(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
         msg = f"test_ask(`{qa_textbox}`)"
-        chatbot.append(("test prompt query", msg))
-        yield chatbot, history, 'Normal'
+        g_inputs.chatbot.append(("test prompt query", msg))
+        yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
 
 class DigesterService:
@@ -151,40 +170,36 @@ class DigesterService:
         yield chatbot, history, status, target_md
 
     @staticmethod
-    def fetch_text(apikey_textbox, source_textbox, target_source_textbox, chatbot, history) -> (bool, BaseData):
+    def fetch_text(g_inputs: GradioInputs) -> (bool, BaseData):
         """Fetch text from source using everything2text4prompt. No OpenAI call here"""
-        converter = Everything2Text4Prompt(openai_api_key=apikey_textbox)
-        text_data, is_success, error_msg = converter.convert_text(source_textbox, target_source_textbox)
+        converter = Everything2Text4Prompt(openai_api_key=g_inputs.apikey_textbox)
+        text_data, is_success, error_msg = converter.convert_text(g_inputs.source_textbox, g_inputs.source_target_textbox)
         text_content = text_data.full_content
 
-        chatbot_input = f"Converting source to text for [{source_textbox}] {target_source_textbox} ..."
-        target_md = f"[{source_textbox}] {target_source_textbox}"
+        chatbot_input = f"Converting source to text for [{g_inputs.source_textbox}] {g_inputs.source_target_textbox} ..."
+        target_md = f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}"
         if is_success:
             chatbot_output = f"""
 Extracted text successfully:
 
 {text_content}
             """
-            yield from DigesterService.update_ui(chatbot_input, chatbot_output,
-                                                 "Success", target_md,
-                                                 chatbot, history)
+            yield from DigesterService.update_ui(chatbot_input, chatbot_output, "Success", target_md, g_inputs.chatbot, g_inputs.history)
         else:
             chatbot_output = f"""
 Text extraction failed ({error_msg})
             """
-            yield from DigesterService.update_ui(chatbot_input, chatbot_output,
-                                                 "Failed", target_md,
-                                                 chatbot, history)
+            yield from DigesterService.update_ui(chatbot_input, chatbot_output, "Failed", target_md, g_inputs.chatbot, g_inputs.history)
         return is_success, text_data
 
 
 class PromptEngineeringStrategy:
     @staticmethod
-    def execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
-        if source_textbox == 'youtube':
-            yield from PromptEngineeringStrategy.execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
-        elif source_textbox == 'podcast':
-            yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
+    def execute_prompt_chain(g_inputs: GradioInputs, text_data: BaseData):
+        if g_inputs.source_textbox == 'youtube':
+            yield from PromptEngineeringStrategy.execute_prompt_chain_youtube(g_inputs, text_data)
+        elif g_inputs.source_textbox == 'podcast':
+            yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(g_inputs, text_data)
 
     @staticmethod
     def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
@@ -198,13 +213,13 @@ Be comprehensive and precise. Use point-form if necessary.
         yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
 
     @staticmethod
-    def execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: YoutubeData):
+    def execute_prompt_chain_youtube(g_inputs: GradioInputs, text_data: YoutubeData):
         text_content = text_data.full_content
         # yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
-        yield from YoutubeChain.execute_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
+        yield from YoutubeChain.execute_chain(g_inputs, text_data)
 
     @staticmethod
-    def execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: PodcastData):
+    def execute_prompt_chain_podcast(g_inputs: GradioInputs, text_data: PodcastData):
         pass
 
 
@@ -264,31 +279,31 @@ Additionally, since it is a N things video, the summary should include the N ite
     """
 
     @staticmethod
-    def execute_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: YoutubeData):
+    def execute_chain(g_inputs: GradioInputs, text_data: YoutubeData):
         text_content = text_data.full_content
-        yield from YoutubeChain.execute_timestamped_summary_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
-        video_type = yield from YoutubeChain.execute_classifer_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
-        yield from YoutubeChain.execute_final_summary_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data, video_type)
+        yield from YoutubeChain.execute_timestamped_summary_chain(g_inputs, text_data)
+        video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
+        yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
 
     @classmethod
-    def execute_classifer_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData):
+    def execute_classifer_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
         prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT])
         prompt_show_user = "Classify the video type for me"
-        video_type = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
+        video_type = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         return video_type
 
     @classmethod
-    def execute_timestamped_summary_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData):
+    def execute_timestamped_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData):
         transcript_with_ts = ""
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
         prompt_show_user = "Generate the timestamped summary"
-        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
+        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
 
     @classmethod
-    def execute_final_summary_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData, video_type):
+    def execute_final_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
         if video_type == "N things":
             pass  # TODO
         else:
