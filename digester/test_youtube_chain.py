@@ -1,44 +1,9 @@
 from chatgpt_service import ChatGPTService
 from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
+from gradio_method_service import YoutubeChain
 
 import json
-
-CLASSIFIER_PROMPT = """
-[Youtube Video types]
-N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
-Tutorials: how to do or make something in order to teach a skill or how to use a product or software
-How-to and DIY: People show how to make or do something yourself, like crafts, recipes, projects, etc
-Interview: Interviewee shows their standpoint with a topic.
-Others: If the video type is not listed above
-
-[TITLE]
-{title}
-
-[TRANSCRIPT]
-{transcript}
-
-"""
-
-CLASSIFIER_PROMPT_TASK = """
-[TASK]
-From the above title, transcript, classify the youtube video type listed above
-Give the video type with JSON format like {"type": "N things"}, and exclude other text
-"""
-
-TIMESTAMPED_SUMMARY_PROMPT = """
-[TITLE]
-{title}
-
-[Transcript with timestamp]
-{transcript_with_ts}
-"""
-
-TIMESTAMPED_SUMMARY_TASK = """
-[TASK]
-Convert this into youtube summary.
-Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk
-"""
 
 
 class VideoExample:
@@ -89,7 +54,7 @@ class VideoExample:
         return YoutubeData(transcript, title, description, ts_transcript_list)
 
 
-class YoutubeChain():
+class YoutubeTestChain():
     @staticmethod
     def run_testing_chain():
         input_1 = """Give me 2 ideas for the summer"""
@@ -104,7 +69,7 @@ class YoutubeChain():
     @staticmethod
     def test_youtube_classifier(youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        input_1 = CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + CLASSIFIER_PROMPT_TASK
+        input_1 = YoutubeChain.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + YoutubeChain.CLASSIFIER_PROMPT_TASK
         response_1 = ChatGPTService.predict_no_ui_long_connection(input_1)
         video_type = json.loads(response_1)['type']
         print(f"\nparsed video_type: \n{video_type}")
@@ -114,16 +79,15 @@ class YoutubeChain():
         transcript_with_ts = ""
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
-        input_1 = TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts) + TIMESTAMPED_SUMMARY_TASK
+        input_1 = YoutubeChain.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts) + YoutubeChain.TIMESTAMPED_SUMMARY_TASK
         response_1 = ChatGPTService.predict_no_ui_long_connection(input_1)
         print(f"\nresponse_1: \n{response_1}")
 
 
 if __name__ == '__main__':
-    # YoutubeChain.run_testing_chain()
     youtube_data: YoutubeData = VideoExample.get_lSTEhG021Jc()
-    # YoutubeChain.test_youtube_classifier(youtube_data)
-    YoutubeChain.test_youtube_timestamped_summary(youtube_data)
+    # YoutubeTestChain.test_youtube_classifier(youtube_data)
+    YoutubeTestChain.test_youtube_timestamped_summary(youtube_data)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"

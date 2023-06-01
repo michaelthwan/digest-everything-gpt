@@ -182,29 +182,105 @@ class PromptEngineeringStrategy:
     @staticmethod
     def execute_prompt_chain(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
         if source_textbox == 'youtube':
-            yield from PromptEngineeringStrategy.execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+            yield from PromptEngineeringStrategy.execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
         elif source_textbox == 'podcast':
-            yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+            yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
 
     @staticmethod
-    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history):
+    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
         prefix = f"""
 Please summarize the following {source_textbox} using markdown.
 Be comprehensive and precise. Use point-form if necessary.
         """
         # TODO prompt engineering
-        i_say = prefix + f"{source_textbox} content: {text_content}"
+        i_say = prefix + f"{source_textbox} content: {text_data.full_content}"
         i_say_show_user = prefix + f"{source_textbox} content: (Ommitted)"
         yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
 
     @staticmethod
-    def execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+    def execute_prompt_chain_youtube(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: YoutubeData):
         text_content = text_data.full_content
-        yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_content, chatbot, history)
+        # yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
+        yield from YoutubeChain.execute_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
 
     @staticmethod
-    def execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+    def execute_prompt_chain_podcast(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: PodcastData):
         pass
+
+
+class Chain:
+    @staticmethod
+    def execute_chain(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+        raise NotImplementedError
+
+
+class YoutubeChain(Chain):
+    CLASSIFIER_PROMPT = """
+[Youtube Video types]
+N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
+Tutorials: how to do or make something in order to teach a skill or how to use a product or software
+How-to and DIY: People show how to make or do something yourself, like crafts, recipes, projects, etc
+Interview: Interviewee shows their standpoint with a topic.
+Others: If the video type is not listed above
+
+[TITLE]
+{title}
+
+[TRANSCRIPT]
+{transcript}
+
+    """
+
+    CLASSIFIER_PROMPT_TASK = """
+[TASK]
+From the above title, transcript, classify the youtube video type listed above
+Give the video type with JSON format like {"type": "N things"}, and exclude other text
+    """
+
+    TIMESTAMPED_SUMMARY_PROMPT = """
+[TITLE]
+{title}
+
+[Transcript with timestamp]
+{transcript_with_ts}
+    """
+
+    TIMESTAMPED_SUMMARY_TASK = """ex
+[TASK]
+Convert this into youtube summary.
+Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk
+    """
+
+    @staticmethod
+    def execute_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data: YoutubeData):
+        text_content = text_data.full_content
+        yield from YoutubeChain.execute_timestamped_summary_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
+        video_type = yield from YoutubeChain.execute_classifer_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data)
+        yield from YoutubeChain.execute_final_summary_chain(apikey_textbox, source_textbox, target_source_textbox, chatbot, history, text_data, video_type)
+
+    @classmethod
+    def execute_classifer_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData):
+        TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
+        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + cls.CLASSIFIER_PROMPT_TASK
+        prompt_show_user = "Classify the video type for me"
+        video_type = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
+        return video_type
+
+    @classmethod
+    def execute_timestamped_summary_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData):
+        transcript_with_ts = ""
+        for entry in youtube_data.ts_transcript_list:
+            transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
+        prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts) + cls.TIMESTAMPED_SUMMARY_TASK
+        prompt_show_user = "Generate the timestamped summary"
+        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
+
+    @classmethod
+    def execute_final_summary_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData, video_type):
+        if video_type == "N things":
+            pass  # TODO
+        else:
+            pass
 
 
 if __name__ == '__main__':
