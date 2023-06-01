@@ -229,9 +229,6 @@ Others: If the video type is not listed above
 [TRANSCRIPT]
 {transcript}
 
-    """
-
-    CLASSIFIER_PROMPT_TASK = """
 [TASK]
 From the above title, transcript, classify the youtube video type listed above
 Give the video type with JSON format like {"type": "N things"}, and exclude other text
@@ -243,12 +240,27 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 
 [Transcript with timestamp]
 {transcript_with_ts}
-    """
 
-    TIMESTAMPED_SUMMARY_TASK = """ex
 [TASK]
 Convert this into youtube summary.
 Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk
+    """
+
+    FINAL_SUMMARY_PROMPT = """
+[VIDEO_TYPE]
+This is the video type
+N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
+Tutorials: how to do or make something in order to teach a skill or how to use a product or software
+
+[TITLE]
+{title}
+
+[TRANSCRIPT]
+{transcript}
+
+[TASK]
+Summarize the above transcript. Step by step showing points for the main concepts 
+Additionally, since it is a N things video, the summary should include the N items stated in the video.
     """
 
     @staticmethod
@@ -261,7 +273,7 @@ Separate for 2-5minutes chunk as one line, and start with the timestamp followed
     @classmethod
     def execute_classifer_chain(cls, apikey_textbox, source_textbox, target_source_textbox, chatbot, history, youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + cls.CLASSIFIER_PROMPT_TASK
+        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT])
         prompt_show_user = "Classify the video type for me"
         video_type = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
         return video_type
@@ -271,7 +283,7 @@ Separate for 2-5minutes chunk as one line, and start with the timestamp followed
         transcript_with_ts = ""
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
-        prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts) + cls.TIMESTAMPED_SUMMARY_TASK
+        prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
         prompt_show_user = "Generate the timestamped summary"
         yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
 
