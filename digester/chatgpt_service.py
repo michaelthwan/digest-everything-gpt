@@ -38,11 +38,10 @@ class LLMService:
         return chunk
 
     @staticmethod
-    def generate_payload(inputs, history, stream):
-        API_KEY = config['openai_api_key']
+    def generate_payload(api_key, inputs, history, stream):
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}"
+            "Authorization": f"Bearer {api_key}"
         }
 
         conversation_cnt = len(history) // 2
@@ -102,11 +101,11 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md):
+    def call_chatgpt(i_say, i_say_show_user, chatbot, history, api_key, source_md):
         chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
         status = "Success"
         yield chatbot, history, status, source_md  # show prompt_show_user (waiting for chatgpt)
-        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, history=[])
+        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, api_key, history=[])
         chatbot[-1] = (i_say_show_user, gpt_say)
         history.append(i_say_show_user)
         history.append(gpt_say)
@@ -114,7 +113,7 @@ class ChatGPTService:
         return gpt_say
 
     @staticmethod
-    def predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, history=[]):
+    def predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, api_key, history=[]):
 
         TIMEOUT_SECONDS, MAX_RETRY = config['openai']['timeout_sec'], config['openai']['max_retry']
         # When multi-threaded, you need a mutable structure to pass information between different threads
@@ -125,7 +124,7 @@ class ChatGPTService:
         def mt(i_say, history):
             while True:
                 try:
-                    mutable_list[0] = ChatGPTService.predict_no_ui_long_connection(inputs=i_say, history=history)
+                    mutable_list[0] = ChatGPTService.predict_no_ui_long_connection(api_key, prompt=i_say, history=history)
                     # if long_connection:
                     #     mutable_list[0] = predict_no_ui_long_connection(inputs=i_say, top_p=top_p, temperature=temperature, history=history, sys_prompt=sys_prompt)
                     # else:
@@ -167,12 +166,12 @@ f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS *
         return gpt_say
 
     @staticmethod
-    def predict_no_ui_long_connection(inputs, history=[], observe_window=None):
+    def predict_no_ui_long_connection(api_key, prompt, history=[], observe_window=None):
         """
             Send to chatGPT and wait for a reply, all at once, without showing the intermediate process. But the internal method of stream is used.
             observe_window: used to pass the output across threads, most of the time just for the fancy visual effect, just leave it empty
         """
-        headers, payload = LLMService.generate_payload(inputs, history, stream=True)
+        headers, payload = LLMService.generate_payload(api_key, prompt, history, stream=True)
 
         retry = 0
         while True:

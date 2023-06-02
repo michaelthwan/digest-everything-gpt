@@ -1,7 +1,7 @@
+import json
+
 from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
-import os
-import time
 
 from digester.chatgpt_service import LLMService, ChatGPTService
 
@@ -202,17 +202,6 @@ class PromptEngineeringStrategy:
             yield from PromptEngineeringStrategy.execute_prompt_chain_podcast(g_inputs, text_data)
 
     @staticmethod
-    def summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data: BaseData, chatbot, history):
-        prefix = f"""
-Please summarize the following {source_textbox} using markdown.
-Be comprehensive and precise. Use point-form if necessary.
-        """
-        # TODO prompt engineering
-        i_say = prefix + f"{source_textbox} content: {text_data.full_content}"
-        i_say_show_user = prefix + f"{source_textbox} content: (Ommitted)"
-        yield from ChatGPTService.call_chatgpt(i_say, i_say_show_user, chatbot, history, source_md=f"[{source_textbox}] {target_source_textbox}")
-
-    @staticmethod
     def execute_prompt_chain_youtube(g_inputs: GradioInputs, text_data: YoutubeData):
         text_content = text_data.full_content
         # yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
@@ -225,7 +214,7 @@ Be comprehensive and precise. Use point-form if necessary.
 
 class Chain:
     @staticmethod
-    def execute_chain(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history):
+    def execute_chain(g_inputs: GradioInputs, text_data: YoutubeData):
         raise NotImplementedError
 
 
@@ -244,6 +233,9 @@ Others: If the video type is not listed above
 [TRANSCRIPT]
 {transcript}
 
+    """
+
+    CLASSIFER_TASK_PROMPT = """
 [TASK]
 From the above title, transcript, classify the youtube video type listed above
 Give the video type with JSON format like {"type": "N things"}, and exclude other text
@@ -288,9 +280,15 @@ Additionally, since it is a N things video, the summary should include the N ite
     @classmethod
     def execute_classifer_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT])
+        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + cls.CLASSIFER_TASK_PROMPT
         prompt_show_user = "Classify the video type for me"
-        video_type = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        try:
+            video_type = json.loads(response)['type']
+        except Exception as e:
+            # TODO: Exception handling, show error in UI
+            video_type = 'Others'
         return video_type
 
     @classmethod
@@ -300,7 +298,8 @@ Additionally, since it is a N things video, the summary should include the N ite
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
         prompt_show_user = "Generate the timestamped summary"
-        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                               source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
 
     @classmethod
     def execute_final_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
@@ -308,16 +307,18 @@ Additionally, since it is a N things video, the summary should include the N ite
             pass  # TODO
         else:
             pass
+        yield g_inputs.chatbot, g_inputs.history, "Test", "Test md"
 
 
 if __name__ == '__main__':
+    API_KEY = ""
     input_1 = """Give me 2 ideas for the summer"""
     # input_1 = """Explain more on the first idea"""
-    response_1 = ChatGPTService.predict_no_ui_long_connection(input_1)
+    response_1 = ChatGPTService.predict_no_ui_long_connection(API_KEY, input_1)
     print(response_1)
 
     input_2 = """
 For the first idea, suggest some step by step planning for me
     """
-    response_2 = ChatGPTService.predict_no_ui_long_connection(input_2, [input_1, response_1])
+    response_2 = ChatGPTService.predict_no_ui_long_connection(API_KEY, input_2, [input_1, response_1])
     print(response_2)
