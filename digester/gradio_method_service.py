@@ -221,7 +221,7 @@ class Chain:
 class YoutubeChain(Chain):
     CLASSIFIER_PROMPT = """
 [Youtube Video types]
-N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
+N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW". Usually the title starts with a number.
 Tutorials: how to do or make something in order to teach a skill or how to use a product or software
 How-to and DIY: People show how to make or do something yourself, like crafts, recipes, projects, etc
 Interview: Interviewee shows their standpoint with a topic.
@@ -237,8 +237,8 @@ Others: If the video type is not listed above
 
     CLASSIFER_TASK_PROMPT = """
 [TASK]
-From the above title, transcript, classify the youtube video type listed above
-Give the video type with JSON format like {"type": "N things"}, and exclude other text
+From the above title, transcript, classify the youtube video type listed above.
+Give the video type with JSON format like {"type": "N things"}, and exclude other text.
     """
 
     TIMESTAMPED_SUMMARY_PROMPT = """
@@ -249,8 +249,9 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 {transcript_with_ts}
 
 [TASK]
-Convert this into youtube summary.
-Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk
+Convert this into youtube summary. 
+Use markdown format.
+Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk.
     """
 
     FINAL_SUMMARY_PROMPT = """
@@ -266,16 +267,38 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 {transcript}
 
 [TASK]
-Summarize the above transcript. Step by step showing points for the main concepts 
-Additionally, since it is a N things video, the summary should include the N items stated in the video.
+Summarize the above transcript. Step by step showing points for the main concepts.
+Use markdown format.
+{task_constraint} 
     """
+
+    FINAL_SUMMARY_TASKS = {
+        "N things": """
+Additionally, since it is a N things video, the summary should include the N items stated in the video.
+        """,
+        "Tutorials": """
+        """,
+    }
 
     @staticmethod
     def execute_chain(g_inputs: GradioInputs, text_data: YoutubeData):
         text_content = text_data.full_content
-        yield from YoutubeChain.execute_timestamped_summary_chain(g_inputs, text_data)
+        timestamped_summary = yield from YoutubeChain.execute_timestamped_summary_chain(g_inputs, text_data)
         video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
-        yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
+        final_summary = yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
+        full_summary = f"""
+Video: {text_data.title}
+# Timestamped summary
+{timestamped_summary}
+
+# Summary
+{final_summary}
+        """
+        prompt_show_user = "Full summary"
+        g_inputs.chatbot[-1] = (prompt_show_user, full_summary)
+        g_inputs.history.append(prompt_show_user)
+        g_inputs.history.append(full_summary)
+        yield g_inputs.chatbot, g_inputs.history, "Success", f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}"
 
     @classmethod
     def execute_classifer_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData):
@@ -298,16 +321,22 @@ Additionally, since it is a N things video, the summary should include the N ite
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
         prompt_show_user = "Generate the timestamped summary"
-        yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                               source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        return response
 
     @classmethod
     def execute_final_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
-        if video_type == "N things":
-            pass  # TODO
+        if video_type in cls.FINAL_SUMMARY_TASKS.keys():
+            task_constraint = cls.FINAL_SUMMARY_TASKS[video_type]
         else:
-            pass
-        yield g_inputs.chatbot, g_inputs.history, "Test", "Test md"
+            task_constraint = ""
+        prompt = cls.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
+        prompt_show_user = "Generate the final summary"
+
+        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        return response
 
 
 if __name__ == '__main__':

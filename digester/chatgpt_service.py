@@ -102,6 +102,7 @@ class ChatGPTService:
 
     @staticmethod
     def call_chatgpt(i_say, i_say_show_user, chatbot, history, api_key, source_md):
+        """TODO: handle token exceeding issue"""
         chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
         status = "Success"
         yield chatbot, history, status, source_md  # show prompt_show_user (waiting for chatgpt)

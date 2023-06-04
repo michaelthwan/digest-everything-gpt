@@ -145,7 +145,7 @@ class YoutubeTestChain:
 
     def test_youtube_classifier(self, youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        input_1 = YoutubeChain.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + YoutubeChain.CLASSIFIER_PROMPT_TASK
+        input_1 = YoutubeChain.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + YoutubeChain.CLASSIFER_TASK_PROMPT
         response_1 = ChatGPTService.predict_no_ui_long_connection(self.api_key, input_1)
         video_type = json.loads(response_1)['type']
         print(f"\nparsed video_type: \n{video_type}")
@@ -168,15 +168,15 @@ class YoutubeTestChain:
 
 
 if __name__ == '__main__':
-    # youtube_data: YoutubeData = VideoExample.get_lSTEhG021Jc()
-    youtube_data: YoutubeData = VideoExample.get_CUPe_TZECQQ()
+    youtube_data: YoutubeData = VideoExample.get_lSTEhG021Jc()
+    # youtube_data: YoutubeData = VideoExample.get_CUPe_TZECQQ()
 
     API_KEY = ""
     youtube_test_chain = YoutubeTestChain(API_KEY)
-    # youtube_test_chain.test_youtube_classifier(youtube_data)
+    youtube_test_chain.test_youtube_classifier(youtube_data)
     # youtube_test_chain.test_youtube_timestamped_summary(youtube_data)
-    video_type = "N things"
-    youtube_test_chain.test_youtube_final_summary(video_type, youtube_data)
+    # video_type = "N things"
+    # youtube_test_chain.test_youtube_final_summary(video_type, youtube_data)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"
