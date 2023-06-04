@@ -40,7 +40,7 @@ class GradioUIService:
                 return functions[fn_key]['extra_outputs']
             return []
 
-        gr.Chatbot.postprocess = GradioUIService.format_io
+        # gr.Chatbot.postprocess = GradioUIService.format_io
         functions = GradioUIService.get_functions()
         with gr.Blocks(theme=GradioUIService.get_theme(), css=GradioUIService.get_css()) as demo:
             gr.HTML(title_html)
@@ -102,7 +102,7 @@ class GradioUIService:
                 cancel_handles.append(click_handle)
             stop_btn.click(fn=None, inputs=None, outputs=None, cancels=cancel_handles)
             reset_btn.click(fn=lambda: ([], [], "Already reset"), inputs=None, outputs=outputs)
-        demo.title = "CodeAnalyzerGPT"
+        demo.title = "DigestEverythingGPT"
         return demo
 
     def format_io(self, y):
@@ -161,10 +161,10 @@ class GradioUIService:
         i_ask, gpt_reply = y[-1]
         i_ask = text_divide_paragraph(i_ask)
         gpt_reply = close_up_code_segment_during_stream(gpt_reply)
-        y[-1] = (
-            None if i_ask is None else markdown.markdown(i_ask, extensions=['fenced_code', 'tables']),
-            None if gpt_reply is None else markdown_convertion(gpt_reply)
-        )
+        # y[-1] = (
+        #     None if i_ask is None else markdown.markdown(i_ask, extensions=['fenced_code', 'tables']),
+        #     None if gpt_reply is None else markdown_convertion(gpt_reply)
+        # )
         return y
 
     @staticmethod

@@ -270,6 +270,10 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 Summarize the above transcript. Step by step showing points for the main concepts.
 Use markdown format.
 {task_constraint} 
+
+The format is like:
+Summary: (content of summary)
+Items mentioned in the video: (content of N things)
     """
 
     FINAL_SUMMARY_TASKS = {

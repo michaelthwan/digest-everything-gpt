@@ -159,10 +159,11 @@ class YoutubeTestChain:
         print(f"\nresponse_1: \n{response_1}")
 
     def test_youtube_final_summary(self, video_type: str, youtube_data: YoutubeData):
-        if video_type == "N things":
-            prompt = YoutubeChain.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content)
+        if video_type in YoutubeChain.FINAL_SUMMARY_TASKS.keys():
+            task_constraint = YoutubeChain.FINAL_SUMMARY_TASKS[video_type]
         else:
-            raise NotImplementedError
+            task_constraint = ""
+        prompt = YoutubeChain.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
         response = ChatGPTService.predict_no_ui_long_connection(self.api_key, prompt)
         print(f"\nresponse: \n{response}")
 
@@ -172,11 +173,12 @@ if __name__ == '__main__':
     # youtube_data: YoutubeData = VideoExample.get_CUPe_TZECQQ()
 
     API_KEY = ""
+    assert API_KEY
     youtube_test_chain = YoutubeTestChain(API_KEY)
-    youtube_test_chain.test_youtube_classifier(youtube_data)
+    # youtube_test_chain.test_youtube_classifier(youtube_data)
     # youtube_test_chain.test_youtube_timestamped_summary(youtube_data)
-    # video_type = "N things"
-    # youtube_test_chain.test_youtube_final_summary(video_type, youtube_data)
+    video_type = "N things"
+    youtube_test_chain.test_youtube_final_summary(video_type, youtube_data)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"
