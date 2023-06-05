@@ -133,12 +133,13 @@ class ChatGPTService:
                     break
                 except ConnectionAbortedError as token_exceeded_error:
                     # Try to calculate the ratio and keep as much text as possible
+                    print(f'[Local Message] Token exceeded: {token_exceeded_error}.')
                     p_ratio, n_exceed = ChatGPTService.get_reduce_token_percent(str(token_exceeded_error))
                     if len(history) > 0:
                         history = [his[int(len(his) * p_ratio):] for his in history if his is not None]
                     else:
                         i_say = i_say[:int(len(i_say) * p_ratio)]
-                    mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio：{(1 - p_ratio):.0%}。'
+                    mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio: {(1 - p_ratio):.0%}。'
                 except TimeoutError as e:
                     mutable_list[0] = '[Local Message] Request timeout.'
                     raise TimeoutError
