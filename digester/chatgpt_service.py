@@ -12,6 +12,7 @@ from digester.util import get_config
 timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
 SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
+TIMEOUT_MSG = '[Local Message] Request timeout.'
 
 # This piece of code heavily reference
 # - https://github.com/GaiZhenbiao/ChuanhuChatGPT
@@ -101,20 +102,26 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def call_chatgpt(i_say, i_say_show_user, chatbot, history, api_key, source_md):
+    def trigger_callgpt_pipeline(prompt, prompt_show_user, chatbot, history, api_key, source_md):
         """TODO: handle token exceeding issue"""
-        chatbot.append((i_say_show_user, "[INFO] waiting for ChatGPT's response."))
+        chatbot.append((prompt_show_user, "[INFO] waiting for ChatGPT's response."))
         status = "Success"
         yield chatbot, history, status, source_md  # show prompt_show_user (waiting for chatgpt)
-        gpt_say = yield from ChatGPTService.predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, api_key, history=[])
-        chatbot[-1] = (i_say_show_user, gpt_say)
-        history.append(i_say_show_user)
+        gpt_say = yield from ChatGPTService.multi_call_chatgpt_with_handling(source_md, prompt, prompt_show_user, chatbot, api_key, history=[])
+        chatbot[-1] = (prompt_show_user, gpt_say)
+        history.append(prompt_show_user)
         history.append(gpt_say)
         yield chatbot, history, status, source_md  # show gpt output
         return gpt_say
 
     @staticmethod
-    def predict_no_ui_but_counting_down(source_md, i_say, i_say_show_user, chatbot, api_key, history=[]):
+    def multi_call_chatgpt_with_handling(source_md, prompt, prompt_show_user, chatbot, api_key, history=[]):
+        """
+        Handling
+        - token exceeding -> split input
+        - timeout -> retry 2 times
+        - other error -> retry 2 times
+        """
 
         TIMEOUT_SECONDS, MAX_RETRY = config['openai']['timeout_sec'], config['openai']['max_retry']
         # When multi-threaded, you need a mutable structure to pass information between different threads
@@ -125,11 +132,7 @@ class ChatGPTService:
         def mt(i_say, history):
             while True:
                 try:
-                    mutable_list[0] = ChatGPTService.predict_no_ui_long_connection(api_key, prompt=i_say, history=history)
-                    # if long_connection:
-                    #     mutable_list[0] = predict_no_ui_long_connection(inputs=i_say, top_p=top_p, temperature=temperature, history=history, sys_prompt=sys_prompt)
-                    # else:
-                    #     mutable_list[0] = predict_no_ui(inputs=i_say, top_p=top_p, temperature=temperature, history=history, sys_prompt=sys_prompt)
+                    mutable_list[0] = ChatGPTService.single_call_chatgpt(api_key, prompt=i_say, history=history)
                     break
                 except ConnectionAbortedError as token_exceeded_error:
                     # Try to calculate the ratio and keep as much text as possible
@@ -141,20 +144,21 @@ class ChatGPTService:
                         i_say = i_say[:int(len(i_say) * p_ratio)]
                     mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio: {(1 - p_ratio):.0%}。'
                 except TimeoutError as e:
-                    mutable_list[0] = '[Local Message] Request timeout.'
+                    mutable_list[0] = TIMEOUT_MSG
                     raise TimeoutError
                 except Exception as e:
                     mutable_list[0] = f'[Local Message] Exception: {str(e)}.'
                     raise RuntimeError(f'[Local Message] Exception: {str(e)}.')
+                # TODO retry
 
         # Create a new thread to make http requests
-        thread_name = threading.Thread(target=mt, args=(i_say, history))
+        thread_name = threading.Thread(target=mt, args=(prompt, history))
         thread_name.start()
         # The original thread is responsible for continuously updating the UI, implementing a timeout countdown, and waiting for the new thread's task to complete
         cnt = 0
         while thread_name.is_alive():
             cnt += 1
-            chatbot[-1] = (i_say_show_user, f"""
+            chatbot[-1] = (prompt_show_user, f"""
 f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
 {mutable_list[0]}
             """)
@@ -163,15 +167,17 @@ f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS *
             time.sleep(1)
         # Get the output of gpt out of the mutable
         gpt_say = mutable_list[0]
-        if gpt_say == '[Local Message] Failed with timeout.':
+        if gpt_say == TIMEOUT_MSG:
             raise TimeoutError
         return gpt_say
 
     @staticmethod
-    def predict_no_ui_long_connection(api_key, prompt, history=[], observe_window=None):
+    def single_call_chatgpt(api_key, prompt, history=[], observe_window=None):
         """
-            Send to chatGPT and wait for a reply, all at once, without showing the intermediate process. But the internal method of stream is used.
-            observe_window: used to pass the output across threads, most of the time just for the fancy visual effect, just leave it empty
+        Single call chatgpt only. No handling on multiple call (it should be in upper caller multi_call_chatgpt_with_handling())
+        - Support stream=True
+        - observe_window: used to pass the output across threads, most of the time just for the fancy visual effect, just leave it empty
+        - retry 2 times
         """
         headers, payload = LLMService.generate_payload(api_key, prompt, history, stream=True)
 

@@ -309,8 +309,8 @@ Video: {text_data.title}
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
         prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + cls.CLASSIFER_TASK_PROMPT
         prompt_show_user = "Classify the video type for me"
-        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         try:
             video_type = json.loads(response)['type']
         except Exception as e:
@@ -325,8 +325,8 @@ Video: {text_data.title}
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
         prompt_show_user = "Generate the timestamped summary"
-        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         return response
 
     @classmethod
@@ -338,8 +338,8 @@ Video: {text_data.title}
         prompt = cls.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
         prompt_show_user = "Generate the final summary"
 
-        response = yield from ChatGPTService.call_chatgpt(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                          source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         return response
 
 
@@ -347,11 +347,11 @@ if __name__ == '__main__':
     API_KEY = ""
     input_1 = """Give me 2 ideas for the summer"""
     # input_1 = """Explain more on the first idea"""
-    response_1 = ChatGPTService.predict_no_ui_long_connection(API_KEY, input_1)
+    response_1 = ChatGPTService.single_call_chatgpt(API_KEY, input_1)
     print(response_1)
 
     input_2 = """
 For the first idea, suggest some step by step planning for me
     """
-    response_2 = ChatGPTService.predict_no_ui_long_connection(API_KEY, input_2, [input_1, response_1])
+    response_2 = ChatGPTService.single_call_chatgpt(API_KEY, input_2, [input_1, response_1])
     print(response_2)
