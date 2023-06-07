@@ -1,5 +1,6 @@
 gradio==3.24.1
 gradio_client==0.0.7
+tiktoken>=0.3.3
 openai
 Markdown
 latex2mathml

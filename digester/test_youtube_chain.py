@@ -71,7 +71,6 @@ class YoutubeTestChain:
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = YoutubeChain.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
-        # response = ChatGPTService.predict_no_ui_long_connection(self.api_key, input_1)
         prompt_show_user, chatbot = "", ['prompt1', 'response1']
         response = yield from ChatGPTService.multi_call_chatgpt_with_handling("", prompt, prompt_show_user, chatbot, self.api_key, history=[])
         # print(f"\nresponse_1: \n{response}")
@@ -82,7 +81,6 @@ class YoutubeTestChain:
         else:
             task_constraint = ""
         prompt = YoutubeChain.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
-        # response = ChatGPTService.predict_no_ui_long_connection(self.api_key, prompt)
         prompt_show_user, chatbot = "", ['prompt1', 'response1']
         response = yield from ChatGPTService.multi_call_chatgpt_with_handling("", prompt, prompt_show_user, chatbot, self.api_key, history=[])
         # print(f"\nresponse: \n{response}")

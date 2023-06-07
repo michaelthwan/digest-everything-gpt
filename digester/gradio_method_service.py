@@ -4,6 +4,7 @@ from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
 
 from digester.chatgpt_service import LLMService, ChatGPTService
+from digester.util import Prompt
 
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
 
@@ -219,7 +220,8 @@ class Chain:
 
 
 class YoutubeChain(Chain):
-    CLASSIFIER_PROMPT = """
+    CLASSIFIER_PROMPT = Prompt(
+        prompt_prefix="""
 [Youtube Video types]
 N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW". Usually the title starts with a number.
 Tutorials: how to do or make something in order to teach a skill or how to use a product or software
@@ -231,30 +233,34 @@ Others: If the video type is not listed above
 {title}
 
 [TRANSCRIPT]
+""",
+        prompt_main="""
 {transcript}
-
-    """
-
-    CLASSIFER_TASK_PROMPT = """
+""",
+        prompt_suffix="""
 [TASK]
 From the above title, transcript, classify the youtube video type listed above.
 Give the video type with JSON format like {"type": "N things"}, and exclude other text.
-    """
-
-    TIMESTAMPED_SUMMARY_PROMPT = """
+""")
+    TIMESTAMPED_SUMMARY_PROMPT = Prompt(
+        prompt_prefix="""
 [TITLE]
 {title}
 
 [Transcript with timestamp]
+""",
+        prompt_main="""
 {transcript_with_ts}
-
+""",
+        prompt_suffix="""
 [TASK]
 Convert this into youtube summary. 
 Use markdown format.
 Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk.
-    """
+""")
 
-    FINAL_SUMMARY_PROMPT = """
+    FINAL_SUMMARY_PROMPT = Prompt(
+        prompt_prefix="""
 [VIDEO_TYPE]
 This is the video type
 N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
@@ -264,8 +270,11 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 {title}
 
 [TRANSCRIPT]
+""",
+        prompt_main="""
 {transcript}
-
+""",
+        prompt_suffix="""
 [TASK]
 Summarize the above transcript. Step by step showing points for the main concepts.
 Use markdown format.
@@ -274,14 +283,14 @@ Use markdown format.
 The format is like:
 Summary: (content of summary)
 Items mentioned in the video: (content of N things)
-    """
+""")
 
     FINAL_SUMMARY_TASKS = {
         "N things": """
 Additionally, since it is a N things video, the summary should include the N items stated in the video.
-        """,
+""",
         "Tutorials": """
-        """,
+""",
     }
 
     @staticmethod
@@ -291,13 +300,13 @@ Additionally, since it is a N things video, the summary should include the N ite
         video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
         final_summary = yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
         full_summary = f"""
-Video: {text_data.title}
-# Timestamped summary
-{timestamped_summary}
-
-# Summary
-{final_summary}
-        """
+        Video: {text_data.title}
+        # Timestamped summary
+        {timestamped_summary}
+        
+        # Summary
+        {final_summary}
+                """
         prompt_show_user = "Full summary"
         g_inputs.chatbot[-1] = (prompt_show_user, full_summary)
         g_inputs.history.append(prompt_show_user)
@@ -307,7 +316,11 @@ Video: {text_data.title}
     @classmethod
     def execute_classifer_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData):
         TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        prompt = cls.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + cls.CLASSIFER_TASK_PROMPT
+        prompt = Prompt(cls.CLASSIFIER_PROMPT.prompt_prefix.format(title=youtube_data.title),
+                        cls.CLASSIFIER_PROMPT.prompt_main.format(transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]),
+                        cls.CLASSIFIER_PROMPT.prompt_suffix
+                        )
+
         prompt_show_user = "Classify the video type for me"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
@@ -323,7 +336,10 @@ Video: {text_data.title}
         transcript_with_ts = ""
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
-        prompt = cls.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
+        prompt = Prompt(cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
+                        cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_main.format(transcript_with_ts=transcript_with_ts),
+                        cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix
+                        )
         prompt_show_user = "Generate the timestamped summary"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
@@ -335,9 +351,12 @@ Video: {text_data.title}
             task_constraint = cls.FINAL_SUMMARY_TASKS[video_type]
         else:
             task_constraint = ""
-        prompt = cls.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
+        prompt = Prompt(
+            cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
+            cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=youtube_data.full_content),
+            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint)
+        )
         prompt_show_user = "Generate the final summary"
-
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         return response
