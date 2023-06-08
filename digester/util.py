@@ -4,6 +4,8 @@ from pathlib import Path
 import tiktoken
 import yaml
 
+tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
 
 class Prompt:
     """
@@ -30,14 +32,25 @@ def get_project_root():
 def get_config():
     with open(os.path.join(get_project_root(), 'config/config.yaml'), encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
+    try:
+        with open(os.path.join(get_project_root(), 'config/config_secret.yaml'), encoding='utf-8') as f:
+            config_secret = yaml.load(f, Loader=yaml.FullLoader)
+            config.update(config_secret)
+    except FileNotFoundError:
+        pass  # okay to not have config_secret.yaml
     return config
 
 
 def get_token(text: str):
-    tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
     return len(tokenizer.encode(text, disallowed_special=()))
 
 
+def get_first_n_tokens_and_remaining(text: str, n: int):
+    tokens = tokenizer.encode(text, disallowed_special=())
+    return tokenizer.decode(tokens[:n]), tokenizer.decode(tokens[n:])
+
+
 if __name__ == '__main__':
-    print(get_token("def get_token(text: str)"))
-    print(get_token("皆さんこんにちは"))
+    # print(get_token("def get_token(text: str)"))
+    # print(get_token("皆さんこんにちは"))
+    print(get_first_n_tokens_and_remaining("This is a string with some text to tokenize.", 30))

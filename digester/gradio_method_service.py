@@ -257,6 +257,10 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 Convert this into youtube summary. 
 Use markdown format.
 Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk.
+Example format:
+0:52 - This is the first part
+3:44 - This is the second part
+6:02 - This is the third part
 """)
 
     FINAL_SUMMARY_PROMPT = Prompt(

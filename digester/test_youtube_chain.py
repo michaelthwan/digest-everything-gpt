@@ -1,7 +1,8 @@
 from chatgpt_service import ChatGPTService
 from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
-from gradio_method_service import YoutubeChain
+from gradio_method_service import YoutubeChain, GradioInputs
+from digester.util import get_config, Prompt
 
 import json
 
@@ -59,46 +60,36 @@ class YoutubeTestChain:
         """
         response_2 = ChatGPTService.single_call_chatgpt(self.api_key, input_2, [input_1, response_1])
 
-    def test_youtube_classifier(self, youtube_data: YoutubeData):
-        TRANSCRIPT_CHAR_LIMIT = 200  # Because classifer don't need to see the whole transcript
-        input_1 = YoutubeChain.CLASSIFIER_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]) + YoutubeChain.CLASSIFER_TASK_PROMPT
-        response_1 = ChatGPTService.single_call_chatgpt(self.api_key, input_1)
-        video_type = json.loads(response_1)['type']
-        print(f"\nparsed video_type: \n{video_type}")
+    def test_youtube_classifier(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
+        iter = YoutubeChain.execute_classifer_chain(gradio_inputs, youtube_data)
+        print(next(iter))
+        print(next(iter))
 
-    def test_youtube_timestamped_summary(self, youtube_data: YoutubeData):
-        transcript_with_ts = ""
-        for entry in youtube_data.ts_transcript_list:
-            transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
-        prompt = YoutubeChain.TIMESTAMPED_SUMMARY_PROMPT.format(title=youtube_data.title, transcript_with_ts=transcript_with_ts)
-        prompt_show_user, chatbot = "", ['prompt1', 'response1']
-        response = yield from ChatGPTService.multi_call_chatgpt_with_handling("", prompt, prompt_show_user, chatbot, self.api_key, history=[])
-        # print(f"\nresponse_1: \n{response}")
+    def test_youtube_timestamped_summary(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
+        iter = YoutubeChain.execute_timestamped_summary_chain(gradio_inputs, youtube_data)
+        while True:
+            print(next(iter))
 
-    def test_youtube_final_summary(self, video_type: str, youtube_data: YoutubeData):
-        if video_type in YoutubeChain.FINAL_SUMMARY_TASKS.keys():
-            task_constraint = YoutubeChain.FINAL_SUMMARY_TASKS[video_type]
-        else:
-            task_constraint = ""
-        prompt = YoutubeChain.FINAL_SUMMARY_PROMPT.format(title=youtube_data.title, transcript=youtube_data.full_content, task_constraint=task_constraint)
-        prompt_show_user, chatbot = "", ['prompt1', 'response1']
-        response = yield from ChatGPTService.multi_call_chatgpt_with_handling("", prompt, prompt_show_user, chatbot, self.api_key, history=[])
-        # print(f"\nresponse: \n{response}")
+    def test_youtube_final_summary(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
+        iter = YoutubeChain.execute_final_summary_chain(gradio_inputs, youtube_data, video_type)
+        print(next(iter))
+        print(next(iter))
 
 
 if __name__ == '__main__':
-    API_KEY = ""
-    TARGET_SOURCE = "lSTEhG021Jc"
-    assert API_KEY
+    config = get_config()
+    api_key = config.get("openai").get("api_key")
+    assert api_key
 
+    gradio_inputs = GradioInputs(apikey_textbox=api_key, source_textbox="", source_target_textbox="", qa_textbox="", chatbot=[], history=[])
     youtube_data: YoutubeData = VideoExample.get_tutorial_skincare()
 
-    youtube_test_chain = YoutubeTestChain(API_KEY)
-    # youtube_test_chain.test_youtube_classifier(youtube_data)
-    next(youtube_test_chain.test_youtube_timestamped_summary(youtube_data))
+    youtube_test_chain = YoutubeTestChain(api_key)
+    # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
+    youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
     # video_type = "N things"
     video_type = "Others"
-    # next(youtube_test_chain.test_youtube_final_summary(video_type, youtube_data))
+    # youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"

@@ -7,7 +7,7 @@ import traceback
 
 import requests
 
-from digester.util import get_config, Prompt
+from digester.util import get_config, Prompt, get_first_n_tokens_and_remaining
 
 timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
@@ -81,7 +81,7 @@ class LLMService:
         }
 
         print(f"generate_payload() LLM: {LLM_MODEL}, conversation_cnt: {conversation_cnt} : {inputs}")
-        print(f"[[[[[INPUT]]]]]\n{inputs}")
+        print(f"\n[[[[[INPUT]]]]]\n{inputs}")
         print(f"[[[[[OUTPUT]]]]]")
         return headers, payload
 
@@ -102,20 +102,49 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def trigger_callgpt_pipeline(prompt: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md):
-        """TODO: handle token exceeding issue"""
+    def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md):
         chatbot.append((prompt_show_user, "[INFO] waiting for ChatGPT's response."))
         status = "Success"
         yield chatbot, history, status, source_md  # show prompt_show_user (waiting for chatgpt)
-        gpt_response = yield from ChatGPTService.multi_call_chatgpt_with_handling(source_md, prompt, prompt_show_user, chatbot, api_key, history=[])
-        chatbot[-1] = (prompt_show_user, gpt_response)
-        history.append(prompt_show_user)
-        history.append(gpt_response)
-        yield chatbot, history, status, source_md  # show gpt output
-        return gpt_response
+        prompts = ChatGPTService.split_prompt_content(prompt_obj)
+        full_gpt_response = ""
+        for prompt in prompts:
+            prompt_str = f"{prompt.prompt_prefix}{prompt.prompt_main}{prompt.prompt_suffix}"
+            gpt_response = yield from ChatGPTService.multi_call_chatgpt_with_handling(source_md, prompt_str, prompt_show_user, chatbot, api_key, history=[])
+            chatbot[-1] = (prompt_show_user, gpt_response)
+            history.append(prompt_show_user)
+            history.append(gpt_response)
+            full_gpt_response += gpt_response
+            yield chatbot, history, status, source_md  # show gpt output
+        return full_gpt_response
 
     @staticmethod
-    def multi_call_chatgpt_with_handling(source_md, prompt_obj: Prompt, prompt_show_user: str, chatbot, api_key, history=[]):
+    def split_prompt_content(prompt: Prompt) -> list:
+        """
+        Split the prompt.prompt_main into multiple parts, each part is less than <content_token=3500> tokens
+        Then return all prompts object
+        """
+        prompts = []
+        content_token = config.get('openai').get('content_token')
+        temp_prompt_main = prompt.prompt_main
+        while True:
+            if len(temp_prompt_main) == 0:
+                break
+            elif len(temp_prompt_main) < content_token:
+                prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
+                                      prompt_main=temp_prompt_main,
+                                      prompt_suffix=prompt.prompt_suffix))
+                break
+            else:
+                first, last = get_first_n_tokens_and_remaining(temp_prompt_main, content_token)
+                temp_prompt_main = last
+                prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
+                                      prompt_main=first,
+                                      prompt_suffix=prompt.prompt_suffix))
+        return prompts
+
+    @staticmethod
+    def multi_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, history=[]):
         """
         Handling
         - token exceeding -> split input
@@ -150,9 +179,6 @@ class ChatGPTService:
                     mutable_list[0] = f'[Local Message] Exception: {str(e)}.'
                     raise RuntimeError(f'[Local Message] Exception: {str(e)}.')
                 # TODO retry
-
-        # TODO: split prompt_obj.content_main
-        prompt_str = f"{prompt_obj.prompt_prefix}{prompt_obj.prompt_main}{prompt_obj.prompt_suffix}"
 
         # Create a new thread to make http requests
         thread_name = threading.Thread(target=mt, args=(prompt_str, history))
@@ -228,3 +254,15 @@ f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS *
         if json_data['finish_reason'] == 'length':
             raise ConnectionAbortedError("Completed normally with insufficient Tokens")
         return result
+
+
+if __name__ == '__main__':
+    import pickle
+
+    prompt: Prompt = pickle.load(open('prompt_obj.pkl', 'rb'))
+    prompts = ChatGPTService.split_prompt_content(prompt)
+    for prompt in prompts:
+        print("=====================================")
+        print(prompt.prompt_prefix)
+        print(prompt.prompt_main)
+        print(prompt.prompt_suffix)
