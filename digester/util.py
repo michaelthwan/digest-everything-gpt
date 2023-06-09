@@ -50,6 +50,19 @@ def get_first_n_tokens_and_remaining(text: str, n: int):
     return tokenizer.decode(tokens[:n]), tokenizer.decode(tokens[n:])
 
 
+def provide_text_with_css(text, color):
+    if color == "red":
+        return f'<span style="background-color: red; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
+    elif color == "green":
+        return f'<span style="background-color: green; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
+    elif color == "blue":
+        return f'<span style="background-color: blue; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
+    elif color == "yellow":
+        return f'<span style="background-color: yellow; color: black; padding: 3px; border-radius: 8px;">{text}</span>'
+    else:
+        return text
+
+
 if __name__ == '__main__':
     # print(get_token("def get_token(text: str)"))
     # print(get_token("皆さんこんにちは"))

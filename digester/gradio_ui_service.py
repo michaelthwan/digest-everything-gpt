@@ -47,10 +47,11 @@ class GradioUIService:
             with gr.Row().style(equal_height=True):
                 with gr.Column(scale=1):
                     with gr.Row():
-                        apikey_textbox = gr.Textbox(label="OpenAI API key", placeholder="e.g. sk-xxxxx")
+                        apikey_textbox = gr.Textbox(label="OpenAI API key", placeholder="e.g. sk-xxxxx", css_class="api-key")
                     with gr.Row():
                         source_textbox = gr.Dropdown(
-                            ["youtube", "podcast", "pdf"], label="Source", info="Choose your content provider"
+                            ["youtube", "podcast", "pdf"],
+                            value="youtube", label="Source", info="Choose your content provider"
                             # TODO: dynamic list from everything2text4prompt
                         )
                     with gr.Row():

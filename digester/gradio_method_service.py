@@ -4,7 +4,7 @@ from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
 
 from digester.chatgpt_service import LLMService, ChatGPTService
-from digester.util import Prompt
+from digester.util import Prompt, provide_text_with_css
 
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
 
@@ -62,13 +62,13 @@ class GradioMethodService:
     def fetch_and_summarize(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history):
         g_inputs = GradioInputs(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history)
         g_inputs.history = []
+        g_inputs.chatbot = []
 
-        if g_inputs.source_target_textbox == "":
-            g_inputs.source_target_textbox = 'Empty input'
+        if g_inputs.apikey_textbox == "" or g_inputs.source_textbox == "" or g_inputs.source_target_textbox == "":
             LLMService.report_exception(g_inputs.chatbot, g_inputs.history,
                                         chat_input=f"Source target: [{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
-                                        chat_output=f"Please input the source")
-            yield g_inputs.chatbot, g_inputs.history, 'Normal', WAITING_FOR_TARGET_INPUT
+                                        chat_output=f"{provide_text_with_css('ERROR', 'red')} Please provide api key, source and target source")
+            yield g_inputs.chatbot, g_inputs.history, 'Error', WAITING_FOR_TARGET_INPUT
             return
         # TODO: invalid input checking
         is_success, text_data = yield from DigesterService.fetch_text(g_inputs)
@@ -152,6 +152,12 @@ This code will prompt the user to enter a mathematical function in terms of x an
         g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
         msg = f"test_ask(`{qa_textbox}`)"
         g_inputs.chatbot.append(("test prompt query", msg))
+        g_inputs.chatbot.append(("test prompt query 2", msg))
+        g_inputs.chatbot.append(("", "test empty message"))
+        g_inputs.chatbot.append(("test empty message 2", ""))
+        g_inputs.chatbot.append((None, "output msg, test no input msg"))
+        g_inputs.chatbot.append(("input msg, , test no output msg", None))
+        g_inputs.chatbot.append((None, '<span style="background-color: yellow; color: black; padding: 3px; border-radius: 8px;">WARN</span>'))
         yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
 
@@ -188,9 +194,9 @@ Extracted text successfully:
             yield from DigesterService.update_ui(chatbot_input, chatbot_output, "Success", target_md, g_inputs.chatbot, g_inputs.history)
         else:
             chatbot_output = f"""
-Text extraction failed ({error_msg})
+{provide_text_with_css("ERROR", "red")} Text extraction failed ({error_msg})
             """
-            yield from DigesterService.update_ui(chatbot_input, chatbot_output, "Failed", target_md, g_inputs.chatbot, g_inputs.history)
+            yield from DigesterService.update_ui(chatbot_input, chatbot_output, "Error", target_md, g_inputs.chatbot, g_inputs.history)
         return is_success, text_data
 
 
@@ -255,8 +261,8 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
         prompt_suffix="""
 [TASK]
 Convert this into youtube summary. 
-Use markdown format.
-Separate for 2-5minutes chunk as one line, and start with the timestamp followed by the summarized text for that chunk.
+Separate for 2-5minutes chunk, maximum 20 words for one line.
+Start with the timestamp followed by the summarized text for that chunk.
 Example format:
 0:52 - This is the first part
 3:44 - This is the second part
@@ -286,14 +292,23 @@ Use markdown format.
 
 The format is like:
 Summary: (content of summary)
-Items mentioned in the video: (content of N things)
+{format_constraint}
 """)
 
-    FINAL_SUMMARY_TASKS = {
+    FINAL_SUMMARY_TASK_CONSTRAINTS = {
         "N things": """
 Additionally, since it is a N things video, the summary should include the N items stated in the video.
 """,
         "Tutorials": """
+Additionally, since it is a Tutorial video, provide step by step instructions for the tutorial. 
+""",
+    }
+    FINAL_SUMMARY_FORMAT_CONSTRAINTS = {
+        "N things": """
+Items mentioned in the video: (content of N things)
+""",
+        "Tutorials": """
+Instructions: (step by step instructions)
 """,
     }
 
@@ -304,6 +319,7 @@ Additionally, since it is a N things video, the summary should include the N ite
         video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
         final_summary = yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
         full_summary = f"""
+        {provide_text_with_css("DONE", "green")}
         Video: {text_data.title}
         # Timestamped summary
         {timestamped_summary}
@@ -351,14 +367,15 @@ Additionally, since it is a N things video, the summary should include the N ite
 
     @classmethod
     def execute_final_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
-        if video_type in cls.FINAL_SUMMARY_TASKS.keys():
-            task_constraint = cls.FINAL_SUMMARY_TASKS[video_type]
+        if video_type in cls.FINAL_SUMMARY_TASK_CONSTRAINTS.keys():
+            task_constraint = cls.FINAL_SUMMARY_TASK_CONSTRAINTS[video_type]
+            format_constraint = cls.FINAL_SUMMARY_FORMAT_CONSTRAINTS[video_type]
         else:
-            task_constraint = ""
+            task_constraint, format_constraint = "", ""
         prompt = Prompt(
             cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
             cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=youtube_data.full_content),
-            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint)
+            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint)
         )
         prompt_show_user = "Generate the final summary"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,

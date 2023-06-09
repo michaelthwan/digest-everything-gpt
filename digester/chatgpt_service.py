@@ -7,12 +7,12 @@ import traceback
 
 import requests
 
-from digester.util import get_config, Prompt, get_first_n_tokens_and_remaining
+from digester.util import get_config, Prompt, get_first_n_tokens_and_remaining, provide_text_with_css
 
 timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
 SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
-TIMEOUT_MSG = '[Local Message] Request timeout.'
+TIMEOUT_MSG = f'{provide_text_with_css("ERROR", "red")} Request timeout.'
 
 # This piece of code heavily reference
 # - https://github.com/GaiZhenbiao/ChuanhuChatGPT
@@ -176,8 +176,8 @@ class ChatGPTService:
                     mutable_list[0] = TIMEOUT_MSG
                     raise TimeoutError
                 except Exception as e:
-                    mutable_list[0] = f'[Local Message] Exception: {str(e)}.'
-                    raise RuntimeError(f'[Local Message] Exception: {str(e)}.')
+                    mutable_list[0] = f'{provide_text_with_css("ERROR", "red")} Exception: {str(e)}.'
+                    raise RuntimeError(f'[ERROR] Exception: {str(e)}.')
                 # TODO retry
 
         # Create a new thread to make http requests
@@ -188,7 +188,7 @@ class ChatGPTService:
         while thread_name.is_alive():
             cnt += 1
             chatbot[-1] = (prompt_show_user, f"""
-f"[Local Message] {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
+{provide_text_with_css("PROCESSING...", "blue")} {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
 {mutable_list[0]}
             """)
 

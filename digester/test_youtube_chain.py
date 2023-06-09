@@ -40,12 +40,6 @@ class VideoExample:
         return VideoExample.get_youtube_data("", video_id)
 
 
-class TestChain():
-    @staticmethod
-    def test_compression():
-        pass  # TODO
-
-
 class YoutubeTestChain:
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -68,12 +62,12 @@ class YoutubeTestChain:
     def test_youtube_timestamped_summary(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
         iter = YoutubeChain.execute_timestamped_summary_chain(gradio_inputs, youtube_data)
         while True:
-            print(next(iter))
+            next(iter)
 
     def test_youtube_final_summary(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
         iter = YoutubeChain.execute_final_summary_chain(gradio_inputs, youtube_data, video_type)
-        print(next(iter))
-        print(next(iter))
+        while True:
+            next(iter)
 
 
 if __name__ == '__main__':
@@ -86,10 +80,11 @@ if __name__ == '__main__':
 
     youtube_test_chain = YoutubeTestChain(api_key)
     # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
-    youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
+    # youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
     # video_type = "N things"
-    video_type = "Others"
-    # youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
+    video_type = "Tutorials"
+    # video_type = "Others"
+    youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"
