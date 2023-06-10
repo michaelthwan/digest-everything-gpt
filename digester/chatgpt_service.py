@@ -12,7 +12,9 @@ from digester.util import get_config, Prompt, get_first_n_tokens_and_remaining, 
 timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
 SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
+
 TIMEOUT_MSG = f'{provide_text_with_css("ERROR", "red")} Request timeout.'
+TOKEN_EXCEED_MSG = f'{provide_text_with_css("ERROR", "red")} Exceed token but it should not happen and should be splitted.'
 
 # This piece of code heavily reference
 # - https://github.com/GaiZhenbiao/ChuanhuChatGPT
@@ -88,6 +90,14 @@ class LLMService:
 
 class ChatGPTService:
     @staticmethod
+    def say(user_say, chatbot_say, chatbot, history, status, source_md, is_append=True):
+        if is_append:
+            chatbot.append((user_say, chatbot_say))
+        else:
+            chatbot[-1] = (user_say, chatbot_say)
+        yield chatbot, history, status, source_md
+
+    @staticmethod
     def get_reduce_token_percent(text):
         try:
             pattern = r"(\d+)\s+tokens\b"
@@ -103,19 +113,24 @@ class ChatGPTService:
 
     @staticmethod
     def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md):
-        chatbot.append((prompt_show_user, "[INFO] waiting for ChatGPT's response."))
-        status = "Success"
-        yield chatbot, history, status, source_md  # show prompt_show_user (waiting for chatgpt)
+        yield from ChatGPTService.say(prompt_show_user, f"{provide_text_with_css('INFO', 'blue')} waiting for ChatGPT's response.",
+                                      chatbot, history, "Success", source_md)
         prompts = ChatGPTService.split_prompt_content(prompt_obj)
         full_gpt_response = ""
-        for prompt in prompts:
+        for i, prompt in enumerate(prompts):
+            yield from ChatGPTService.say(None, f"{provide_text_with_css('INFO', 'blue')} Processing Batch {i + 1}",
+                                          chatbot, history, "Success", source_md)
             prompt_str = f"{prompt.prompt_prefix}{prompt.prompt_main}{prompt.prompt_suffix}"
-            gpt_response = yield from ChatGPTService.multi_call_chatgpt_with_handling(source_md, prompt_str, prompt_show_user, chatbot, api_key, history=[])
+
+            gpt_response = yield from ChatGPTService.single_call_chatgpt_with_handling(
+                source_md, prompt_str, prompt_show_user, chatbot, api_key, history=[]
+            )
+
             chatbot[-1] = (prompt_show_user, gpt_response)
             history.append(prompt_show_user)
             history.append(gpt_response)
             full_gpt_response += gpt_response
-            yield chatbot, history, status, source_md  # show gpt output
+            yield chatbot, history, "Success", source_md  # show gpt output
         return full_gpt_response
 
     @staticmethod
@@ -144,7 +159,7 @@ class ChatGPTService:
         return prompts
 
     @staticmethod
-    def multi_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, history=[]):
+    def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, history=[]):
         """
         Handling
         - token exceeding -> split input
@@ -155,23 +170,24 @@ class ChatGPTService:
         TIMEOUT_SECONDS, MAX_RETRY = config['openai']['timeout_sec'], config['openai']['max_retry']
         # When multi-threaded, you need a mutable structure to pass information between different threads
         # list is the simplest mutable structure, we put gpt output in the first position, the second position to pass the error message
-        mutable_list = [None, '']
+        mutable_list = [None, '']  # [gpt_output, error_message]
 
         # multi-threading worker
         def mt(prompt_str, history):
             while True:
                 try:
-                    mutable_list[0] = ChatGPTService.single_call_chatgpt(api_key, prompt_str=prompt_str, history=history)
+                    mutable_list[0] = ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str=prompt_str, history=history)
                     break
                 except ConnectionAbortedError as token_exceeded_error:
-                    # Try to calculate the ratio and keep as much text as possible
-                    print(f'[Local Message] Token exceeded: {token_exceeded_error}.')
-                    p_ratio, n_exceed = ChatGPTService.get_reduce_token_percent(str(token_exceeded_error))
-                    if len(history) > 0:
-                        history = [his[int(len(his) * p_ratio):] for his in history if his is not None]
-                    else:
-                        prompt_str = prompt_str[:int(len(prompt_str) * p_ratio)]
-                    mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio: {(1 - p_ratio):.0%}。'
+                    # # Try to calculate the ratio and keep as much text as possible
+                    # print(f'[Local Message] Token exceeded: {token_exceeded_error}.')
+                    # p_ratio, n_exceed = ChatGPTService.get_reduce_token_percent(str(token_exceeded_error))
+                    # if len(history) > 0:
+                    #     history = [his[int(len(his) * p_ratio):] for his in history if his is not None]
+                    # else:
+                    #     prompt_str = prompt_str[:int(len(prompt_str) * p_ratio)]
+                    # mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio: {(1 - p_ratio):.0%}。'
+                    mutable_list[0] = TOKEN_EXCEED_MSG
                 except TimeoutError as e:
                     mutable_list[0] = TIMEOUT_MSG
                     raise TimeoutError
@@ -187,21 +203,22 @@ class ChatGPTService:
         cnt = 0
         while thread_name.is_alive():
             cnt += 1
-            chatbot[-1] = (prompt_show_user, f"""
+            is_append = False
+            if cnt == 1:
+                is_append = True
+            yield from ChatGPTService.say(prompt_show_user, f"""
 {provide_text_with_css("PROCESSING...", "blue")} {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
 {mutable_list[0]}
-            """)
-
-            yield chatbot, history, 'Normal', source_md
+            """, chatbot, history, 'Normal', source_md, is_append)
             time.sleep(1)
         # Get the output of gpt out of the mutable
         gpt_response = mutable_list[0]
-        if gpt_response == TIMEOUT_MSG:
-            raise TimeoutError
+        if 'ERROR' in gpt_response:
+            raise Exception
         return gpt_response
 
     @staticmethod
-    def single_call_chatgpt(api_key, prompt_str: str, history=[], observe_window=None):
+    def single_rest_call_chatgpt(api_key, prompt_str: str, history=[], observe_window=None):
         """
         Single call chatgpt only. No handling on multiple call (it should be in upper caller multi_call_chatgpt_with_handling())
         - Support stream=True

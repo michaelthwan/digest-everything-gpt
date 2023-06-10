@@ -387,11 +387,11 @@ if __name__ == '__main__':
     API_KEY = ""
     input_1 = """Give me 2 ideas for the summer"""
     # input_1 = """Explain more on the first idea"""
-    response_1 = ChatGPTService.single_call_chatgpt(API_KEY, input_1)
+    response_1 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_1)
     print(response_1)
 
     input_2 = """
 For the first idea, suggest some step by step planning for me
     """
-    response_2 = ChatGPTService.single_call_chatgpt(API_KEY, input_2, [input_1, response_1])
+    response_2 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_2, [input_1, response_1])
     print(response_2)
