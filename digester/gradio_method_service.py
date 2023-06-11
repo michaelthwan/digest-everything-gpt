@@ -15,11 +15,13 @@ class GradioInputs:
     It will be converted in GradioMethodService.
     """
 
-    def __init__(self, apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history):
+    def __init__(self, apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
         self.apikey_textbox = apikey_textbox
         self.source_textbox = source_textbox
         self.source_target_textbox = source_target_textbox
         self.qa_textbox = qa_textbox
+        self.gpt_model_textbox = gpt_model_textbox
+        self.language_textbox = language_textbox
         self.chatbot = chatbot
         self.history = history
 
@@ -59,8 +61,8 @@ class GradioMethodService:
         return res
 
     @staticmethod
-    def fetch_and_summarize(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history):
-        g_inputs = GradioInputs(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history)
+    def fetch_and_summarize(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history)
         g_inputs.history = []
         g_inputs.chatbot = []
 
@@ -77,15 +79,15 @@ class GradioMethodService:
         yield from PromptEngineeringStrategy.execute_prompt_chain(g_inputs, text_data)
 
     @staticmethod
-    def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
-        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
+    def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history)
         msg = f"ask_question(`{qa_textbox}`)"
         g_inputs.chatbot.append(("test prompt query", msg))
         yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
     @staticmethod
-    def test_formatting(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
-        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
+    def test_formatting(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history)
         msg = r"""
 # ASCII, table, code test
 Overall, this program consists of the following files:
@@ -148,8 +150,8 @@ This code will prompt the user to enter a mathematical function in terms of x an
         yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
     @staticmethod
-    def test_asking(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history):
-        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, chatbot, history)
+    def test_asking(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
+        g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history)
         msg = f"test_ask(`{qa_textbox}`)"
         g_inputs.chatbot.append(("test prompt query", msg))
         g_inputs.chatbot.append(("test prompt query 2", msg))
@@ -210,8 +212,6 @@ class PromptEngineeringStrategy:
 
     @staticmethod
     def execute_prompt_chain_youtube(g_inputs: GradioInputs, text_data: YoutubeData):
-        text_content = text_data.full_content
-        # yield from PromptEngineeringStrategy.summarize_text(apikey_textbox, source_textbox, target_source_textbox, text_data, chatbot, history)
         yield from YoutubeChain.execute_chain(g_inputs, text_data)
 
     @staticmethod
@@ -263,6 +263,8 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 Convert this into youtube summary. 
 Separate for 2-5minutes chunk, maximum 20 words for one line.
 Start with the timestamp followed by the summarized text for that chunk.
+Use language: {language}
+
 Example format:
 {first_timestamp} - This is the first part
 {second_minute}:44 - This is the second part
@@ -288,6 +290,7 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 [TASK]
 Summarize the above transcript. Step by step showing points for the main concepts.
 Use markdown format.
+Use language: {language}
 {task_constraint} 
 
 The format is like:
@@ -357,7 +360,7 @@ Instructions: (step by step instructions)
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
         prompt = Prompt(cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_main.format(transcript_with_ts=transcript_with_ts),
-                        cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix
+                        cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix.replace("{language}", g_inputs.language_textbox)
                         )
         prompt_show_user = "Generate the timestamped summary"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
@@ -375,7 +378,7 @@ Instructions: (step by step instructions)
         prompt = Prompt(
             cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
             cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=youtube_data.full_content),
-            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint)
+            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
         )
         prompt_show_user = "Generate the final summary"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,

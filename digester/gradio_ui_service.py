@@ -50,13 +50,24 @@ class GradioUIService:
                         apikey_textbox = gr.Textbox(label="OpenAI API key", placeholder="e.g. sk-xxxxx", css_class="api-key")
                     with gr.Row():
                         source_textbox = gr.Dropdown(
-                            ["youtube", "podcast", "pdf"],
+                            ["youtube", "podcast (not support now)", "pdf (not support now)"],
                             value="youtube", label="Source", info="Choose your content provider"
                             # TODO: dynamic list from everything2text4prompt
                         )
                     with gr.Row():
                         source_target_textbox = gr.Textbox(show_label=True, label="URL / source target",
                                                            placeholder="For youtube video, give video id\nFor podcast, give podcast URL")
+                    with gr.Accordion("Options", open=True):
+                        with gr.Row():
+                            gpt_model_textbox = gr.Dropdown(
+                                ["gpt-3.5-turbo", "gpt-4"],
+                                value="gpt-3.5-turbo", label="GPT model", info="gpt-3.5 is cheaper.\nBut if you found that the result is not good, try gpt-4 \nYour API key must support gpt-4"
+                            )
+                        with gr.Row():
+                            language_textbox = gr.Dropdown(
+                                ["en-US", "zh-CN", "it-IT", "fr-FR", "de-DE", "es-ES", "ja-JP", "ko-KR", "ru-RU", ],
+                                value="en-US", label="Language", info="Choose your language, regardless of video language"
+                            )
                     with gr.Row():
                         functions["Fetch and summarize!"]["btn"] = gr.Button("Fetch and summarize!", variant="primary")
                     with gr.Row().style(equal_height=True):
@@ -86,7 +97,7 @@ class GradioUIService:
             functions = GradioUIService.post_define_functions(functions, folder_md)
             #### handle click(=submit) and cancel behaviour
             # Standard inputs/outputs (global for all actions)
-            inputs = [apikey_textbox, source_textbox, source_target_textbox, qa_textbox, chatbot, history]
+            inputs = [apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history]
             outputs = [chatbot, history, status_md]
             # fetch_and_summarize_textbox
             fn_key = "Fetch and summarize!"

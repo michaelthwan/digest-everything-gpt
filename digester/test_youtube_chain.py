@@ -35,7 +35,7 @@ class VideoExample:
         return VideoExample.get_youtube_data("", video_id)
 
     @staticmethod
-    def get_nthings_8_haits():
+    def get_nthings_8_habits():
         video_id = "IScN1SOcj7A"
         return VideoExample.get_youtube_data("", video_id)
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     assert api_key
 
     gradio_inputs = GradioInputs(apikey_textbox=api_key, source_textbox="", source_target_textbox="", qa_textbox="", chatbot=[], history=[])
-    youtube_data: YoutubeData = VideoExample.get_nthings_8_haits()
+    youtube_data: YoutubeData = VideoExample.get_nthings_8_habits()
 
     youtube_test_chain = YoutubeTestChain(api_key)
     # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
