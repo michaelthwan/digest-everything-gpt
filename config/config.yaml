@@ -3,7 +3,7 @@ gradio:
   port: 7860
 openai:
   api_url: "https://api.openai.com/v1/chat/completions"
-  content_token: 3000 # tokens per content_main (e.g. transcript). If exceed it will be splitted and iterated
+  content_token: 3500 # tokens per content_main (e.g. transcript). If exceed it will be splitted and iterated
   timeout_sec: 25
   max_retry: 2
   api_key: ""

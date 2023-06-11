@@ -120,7 +120,7 @@ class ChatGPTService:
         prompts = ChatGPTService.split_prompt_content(prompt_obj, is_timestamp)
         full_gpt_response = ""
         for i, prompt in enumerate(prompts):
-            yield from ChatGPTService.say(None, f"{provide_text_with_css('INFO', 'blue')} Processing Batch {i + 1}",
+            yield from ChatGPTService.say(None, f"{provide_text_with_css('INFO', 'blue')} Processing Batch {i + 1} / {len(prompts)}",
                                           chatbot, history, "Success", source_md)
             prompt_str = f"{prompt.prompt_prefix}{prompt.prompt_main}{prompt.prompt_suffix}"
 

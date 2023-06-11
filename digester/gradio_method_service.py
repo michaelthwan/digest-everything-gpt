@@ -384,7 +384,7 @@ Instructions: (step by step instructions)
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
                                                                                    source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         if len_prompts > 1:
-            # Give summary of summaries
+            # Give summary of summaries if the video is long
             prompt = Prompt(
                 cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
                 cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=response),
