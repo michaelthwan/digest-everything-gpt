@@ -7,6 +7,7 @@ from digester.chatgpt_service import LLMService, ChatGPTService
 from digester.util import Prompt, provide_text_with_css, GradioInputs
 
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
+RESPONSE_SUFFIX = "⚡Powered by DigestEverythingGPT in github"
 
 
 class GradioMethodService:
@@ -305,14 +306,16 @@ Instructions: (step by step instructions)
         video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
         final_summary = yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
         full_summary = f"""
-        {provide_text_with_css("DONE", "green")}
-        Video: {text_data.title}
-        # Timestamped summary
-        {timestamped_summary}
-        
-        # Summary
-        {final_summary}
-                """
+{provide_text_with_css("DONE", "green")}
+Video: {text_data.title}
+# Timestamped summary
+{timestamped_summary}
+
+# Summary
+{final_summary}
+
+{RESPONSE_SUFFIX}
+        """
         prompt_show_user = "Full summary"
         g_inputs.chatbot[-1] = (prompt_show_user, full_summary)
         g_inputs.history.append(prompt_show_user)

@@ -71,9 +71,9 @@ def provide_text_with_css(text, color):
     if color == "red":
         return f'<span style="background-color: red; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
     elif color == "green":
-        return f'<span style="background-color: green; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
+        return f'<span style="background-color: #307530; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
     elif color == "blue":
-        return f'<span style="background-color: blue; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
+        return f'<span style="background-color: #7b7bff; color: white; padding: 3px; border-radius: 8px;">{text}</span>'
     elif color == "yellow":
         return f'<span style="background-color: yellow; color: black; padding: 3px; border-radius: 8px;">{text}</span>'
     else:
