@@ -263,7 +263,7 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 Convert this into youtube summary. 
 Separate for 2-5minutes chunk, maximum 20 words for one line.
 Start with the timestamp followed by the summarized text for that chunk.
-Use language: {language}
+Must use language: {language}
 
 Example format:
 {first_timestamp} - This is the first part
@@ -290,7 +290,7 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 [TASK]
 Summarize the above transcript. Step by step showing points for the main concepts.
 Use markdown format.
-Use language: {language}
+Must use language: {language}
 {task_constraint} 
 
 The format is like:

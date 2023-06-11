@@ -65,7 +65,7 @@ class GradioUIService:
                             )
                         with gr.Row():
                             language_textbox = gr.Dropdown(
-                                ["en-US", "zh-CN", "it-IT", "fr-FR", "de-DE", "es-ES", "ja-JP", "ko-KR", "ru-RU", ],
+                                ["en-US", "zh-CN", "zh-TW", "it-IT", "fr-FR", "de-DE", "es-ES", "ja-JP", "ko-KR", "ru-RU", ],
                                 value="en-US", label="Language", info="Choose your language, regardless of video language"
                             )
                     with gr.Row():
