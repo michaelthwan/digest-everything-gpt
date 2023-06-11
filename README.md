@@ -4,7 +4,8 @@ DigestEverythingGPT provides world-class content summarization/query tool that l
 quickly understand essential information from various forms of content, such as podcasts, YouTube videos, and PDF
 documents.
 
-The prompt engineering is **chained and tuned** so that is result is of high quality and fast. It is not a simple single query and response tool.
+The prompt engineering is **chained and tuned** so that is result is of high quality and fast. It is not a simple single
+query and response tool.
 
 # Showcases
 
@@ -16,10 +17,10 @@ The prompt engineering is **chained and tuned** so that is result is of high qua
 
 **DigestEverythingGPT's final output will adopt to video type.**
 
-- For example, for the video "17 cheap purchases that save me time" (https://www.youtube.com/watch?v=f7Lfukf0IKY&t=3s&ab_channel=AliAbdaal)
+- For example, for the video "17 cheap purchases that save me
+  time" (https://www.youtube.com/watch?v=f7Lfukf0IKY&t=3s&ab_channel=AliAbdaal)
 
-- it shown the summary with and specific 17 things correctly. 
-
+- it shown the summary with and specific 17 things correctly.
 
 ![n_things_example](/img/n_things_example.png)
 
@@ -49,6 +50,15 @@ The prompt engineering is **chained and tuned** so that is result is of high qua
         - YouTube videos [beta]
         - podcasts (in progress)
         - PDF documents (in progress)
+
+# Installation
+
+Use python 3.10+ (tested in 3.10.8). Install using requirement.txt then launch gradio UI using main.py
+
+```
+pip install -r requirements.txt
+python main.py
+```
 
 # License
 
