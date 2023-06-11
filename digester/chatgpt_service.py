@@ -133,7 +133,7 @@ class ChatGPTService:
             # history.append(gpt_response)
             full_gpt_response += gpt_response
             yield chatbot, history, "Success", source_md  # show gpt output
-        return full_gpt_response
+        return full_gpt_response, len(prompts)
 
     @staticmethod
     def split_prompt_content(prompt: Prompt, is_timestamp=False) -> list:

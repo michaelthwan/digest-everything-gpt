@@ -344,8 +344,8 @@ Instructions: (step by step instructions)
                         cls.CLASSIFIER_PROMPT.prompt_suffix
                         )
         prompt_show_user = "Classify the video type for me"
-        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         try:
             video_type = json.loads(response)['type']
         except Exception as e:
@@ -363,9 +363,9 @@ Instructions: (step by step instructions)
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix.replace("{language}", g_inputs.language_textbox)
                         )
         prompt_show_user = "Generate the timestamped summary"
-        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
-                                                                      is_timestamp=True)
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
+                                                                                   is_timestamp=True)
         return response
 
     @classmethod
@@ -381,8 +381,18 @@ Instructions: (step by step instructions)
             cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
         )
         prompt_show_user = "Generate the final summary"
-        response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        if len_prompts > 1:
+            # Give summary of summaries
+            prompt = Prompt(
+                cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
+                cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=response),
+                cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
+            )
+            prompt_show_user = "Since the video is long, generating the final summary of the summaries"
+            response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
+                                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
         return response
 
 
