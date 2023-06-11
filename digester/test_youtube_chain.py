@@ -46,18 +46,19 @@ class VideoExample:
 
 
 class YoutubeTestChain:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, gpt_model="gpt-3.5-turbo"):
         self.api_key = api_key
+        self.gpt_model = gpt_model
 
     def run_testing_chain(self):
         input_1 = """Give me 2 ideas for the summer"""
         # input_1 = """Explain more on the first idea"""
-        response_1 = ChatGPTService.single_rest_call_chatgpt(self.api_key, input_1)
+        response_1 = ChatGPTService.single_rest_call_chatgpt(self.api_key, input_1, self.gpt_model)
 
         input_2 = """
     For the first idea, suggest some step by step planning for me
         """
-        response_2 = ChatGPTService.single_rest_call_chatgpt(self.api_key, input_2, [input_1, response_1])
+        response_2 = ChatGPTService.single_rest_call_chatgpt(self.api_key, input_2, self.gpt_model, history=[input_1, response_1])
 
     def test_youtube_classifier(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
         iter = YoutubeChain.execute_classifer_chain(gradio_inputs, youtube_data)

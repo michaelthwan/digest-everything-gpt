@@ -102,4 +102,5 @@ Example format:
 8:00 - This is the second part
 9:22 - This is the third part
     """
-    ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str)
+    GPT_MODEL = "gpt-3.5-turbo"
+    ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str, GPT_MODEL)

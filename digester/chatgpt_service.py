@@ -7,11 +7,9 @@ import traceback
 
 import requests
 
-from digester.util import get_config, Prompt, get_token, get_first_n_tokens_and_remaining, provide_text_with_css
+from digester.util import get_config, Prompt, get_token, get_first_n_tokens_and_remaining, provide_text_with_css, GradioInputs
 
 timeout_bot_msg = "Request timeout. Network error"
-LLM_MODEL = "gpt-3.5-turbo"
-# LLM_MODEL = "gpt-4"
 SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
 
 TIMEOUT_MSG = f'{provide_text_with_css("ERROR", "red")} Request timeout.'
@@ -42,7 +40,7 @@ class LLMService:
         return chunk
 
     @staticmethod
-    def generate_payload(api_key, inputs, history, stream):
+    def generate_payload(api_key, gpt_model, inputs, history, stream):
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}"
@@ -73,7 +71,7 @@ class LLMService:
         messages.append(what_i_ask_now)
 
         payload = {
-            "model": LLM_MODEL,
+            "model": gpt_model,
             "messages": messages,
             "temperature": 1.0,
             "top_p": 1.0,
@@ -83,7 +81,7 @@ class LLMService:
             "frequency_penalty": 0,
         }
 
-        print(f"generate_payload() LLM: {LLM_MODEL}, conversation_cnt: {conversation_cnt}")
+        print(f"generate_payload() LLM: {gpt_model}, conversation_cnt: {conversation_cnt}")
         print(f"\n[[[[[INPUT]]]]]\n{inputs}")
         print(f"[[[[[OUTPUT]]]]]")
         return headers, payload
@@ -113,10 +111,10 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md,
-                                 is_timestamp=False):
-        yield from ChatGPTService.say(prompt_show_user, f"{provide_text_with_css('INFO', 'blue')} waiting for ChatGPT's response.",
-                                      chatbot, history, "Success", source_md)
+    def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, g_inputs: GradioInputs, is_timestamp=False):
+        chatbot, history, source_md, api_key, gpt_model = g_inputs.chatbot, g_inputs.history, f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}", g_inputs.apikey_textbox, g_inputs.gpt_model_textbox
+        yield from ChatGPTService.say(prompt_show_user, f"{provide_text_with_css('INFO', 'blue')} waiting for ChatGPT's response.", chatbot, history, "Success", source_md)
+
         prompts = ChatGPTService.split_prompt_content(prompt_obj, is_timestamp)
         full_gpt_response = ""
         for i, prompt in enumerate(prompts):
@@ -125,10 +123,11 @@ class ChatGPTService:
             prompt_str = f"{prompt.prompt_prefix}{prompt.prompt_main}{prompt.prompt_suffix}"
 
             gpt_response = yield from ChatGPTService.single_call_chatgpt_with_handling(
-                source_md, prompt_str, prompt_show_user, chatbot, api_key, history=[]
+                source_md, prompt_str, prompt_show_user, chatbot, api_key, gpt_model, history=[]
             )
 
             chatbot[-1] = (prompt_show_user, gpt_response)
+            # seems no need chat history now (have it later?)
             # history.append(prompt_show_user)
             # history.append(gpt_response)
             full_gpt_response += gpt_response
@@ -214,7 +213,7 @@ class ChatGPTService:
         return prompts
 
     @staticmethod
-    def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, history=[]):
+    def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, gpt_model="gpt-3.5-turbo", history=[]):
         """
         Handling
         - token exceeding -> split input
@@ -231,7 +230,7 @@ class ChatGPTService:
         def mt(prompt_str, history):
             while True:
                 try:
-                    mutable_list[0] = ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str=prompt_str, history=history)
+                    mutable_list[0] = ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str, gpt_model, history=history)
                     break
                 except ConnectionAbortedError as token_exceeded_error:
                     # # Try to calculate the ratio and keep as much text as possible
@@ -273,14 +272,14 @@ class ChatGPTService:
         return gpt_response
 
     @staticmethod
-    def single_rest_call_chatgpt(api_key, prompt_str: str, history=[], observe_window=None):
+    def single_rest_call_chatgpt(api_key, prompt_str: str, gpt_model="gpt-3.5-turbo", history=[], observe_window=None):
         """
         Single call chatgpt only. No handling on multiple call (it should be in upper caller multi_call_chatgpt_with_handling())
         - Support stream=True
         - observe_window: used to pass the output across threads, most of the time just for the fancy visual effect, just leave it empty
         - retry 2 times
         """
-        headers, payload = LLMService.generate_payload(api_key, prompt_str, history, stream=True)
+        headers, payload = LLMService.generate_payload(api_key, gpt_model, prompt_str, history, stream=True)
 
         retry = 0
         while True:

@@ -7,6 +7,23 @@ import yaml
 tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
 
+class GradioInputs:
+    """
+    This DTO class formalized the format of "inputs" from gradio and prevent long signature
+    It will be converted in GradioMethodService.
+    """
+
+    def __init__(self, apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
+        self.apikey_textbox = apikey_textbox
+        self.source_textbox = source_textbox
+        self.source_target_textbox = source_target_textbox
+        self.qa_textbox = qa_textbox
+        self.gpt_model_textbox = gpt_model_textbox
+        self.language_textbox = language_textbox
+        self.chatbot = chatbot
+        self.history = history
+
+
 class Prompt:
     """
     Define the prompt structure

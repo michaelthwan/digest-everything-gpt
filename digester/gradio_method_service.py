@@ -4,26 +4,9 @@ from everything2text4prompt.everything2text4prompt import Everything2Text4Prompt
 from everything2text4prompt.util import BaseData, YoutubeData, PodcastData
 
 from digester.chatgpt_service import LLMService, ChatGPTService
-from digester.util import Prompt, provide_text_with_css
+from digester.util import Prompt, provide_text_with_css, GradioInputs
 
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
-
-
-class GradioInputs:
-    """
-    This DTO class formalized the format of "inputs" from gradio and prevent long signature
-    It will be converted in GradioMethodService.
-    """
-
-    def __init__(self, apikey_textbox, source_textbox, source_target_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
-        self.apikey_textbox = apikey_textbox
-        self.source_textbox = source_textbox
-        self.source_target_textbox = source_target_textbox
-        self.qa_textbox = qa_textbox
-        self.gpt_model_textbox = gpt_model_textbox
-        self.language_textbox = language_textbox
-        self.chatbot = chatbot
-        self.history = history
 
 
 class GradioMethodService:
@@ -344,8 +327,7 @@ Instructions: (step by step instructions)
                         cls.CLASSIFIER_PROMPT.prompt_suffix
                         )
         prompt_show_user = "Classify the video type for me"
-        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
         try:
             video_type = json.loads(response)['type']
         except Exception as e:
@@ -363,9 +345,7 @@ Instructions: (step by step instructions)
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix.replace("{language}", g_inputs.language_textbox)
                         )
         prompt_show_user = "Generate the timestamped summary"
-        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
-                                                                                   is_timestamp=True)
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs, is_timestamp=True)
         return response
 
     @classmethod
@@ -381,8 +361,7 @@ Instructions: (step by step instructions)
             cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
         )
         prompt_show_user = "Generate the final summary"
-        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                                   source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+        response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
         if len_prompts > 1:
             # Give summary of summaries if the video is long
             prompt = Prompt(
@@ -391,20 +370,20 @@ Instructions: (step by step instructions)
                 cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
             )
             prompt_show_user = "Since the video is long, generating the final summary of the summaries"
-            response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+            response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
         return response
 
 
 if __name__ == '__main__':
+    GPT_MODEL = "gpt-3.5-turbo"
     API_KEY = ""
     input_1 = """Give me 2 ideas for the summer"""
     # input_1 = """Explain more on the first idea"""
-    response_1 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_1)
+    response_1 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_1, GPT_MODEL)
     print(response_1)
 
     input_2 = """
 For the first idea, suggest some step by step planning for me
     """
-    response_2 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_2, [input_1, response_1])
+    response_2 = ChatGPTService.single_rest_call_chatgpt(API_KEY, input_2, GPT_MODEL, history=[input_1, response_1])
     print(response_2)
