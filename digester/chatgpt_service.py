@@ -7,10 +7,11 @@ import traceback
 
 import requests
 
-from digester.util import get_config, Prompt, get_first_n_tokens_and_remaining, provide_text_with_css
+from digester.util import get_config, Prompt, get_token, get_first_n_tokens_and_remaining, provide_text_with_css
 
 timeout_bot_msg = "Request timeout. Network error"
 LLM_MODEL = "gpt-3.5-turbo"
+# LLM_MODEL = "gpt-4"
 SYSTEM_PROMPT = "Be a assistant to digest youtube, podcast content to give summaries and insights"
 
 TIMEOUT_MSG = f'{provide_text_with_css("ERROR", "red")} Request timeout.'
@@ -112,10 +113,11 @@ class ChatGPTService:
             return 0.5, 'Unknown'
 
     @staticmethod
-    def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md):
+    def trigger_callgpt_pipeline(prompt_obj: Prompt, prompt_show_user: str, chatbot, history, api_key, source_md,
+                                 is_timestamp=False):
         yield from ChatGPTService.say(prompt_show_user, f"{provide_text_with_css('INFO', 'blue')} waiting for ChatGPT's response.",
                                       chatbot, history, "Success", source_md)
-        prompts = ChatGPTService.split_prompt_content(prompt_obj)
+        prompts = ChatGPTService.split_prompt_content(prompt_obj, is_timestamp)
         full_gpt_response = ""
         for i, prompt in enumerate(prompts):
             yield from ChatGPTService.say(None, f"{provide_text_with_css('INFO', 'blue')} Processing Batch {i + 1}",
@@ -127,35 +129,88 @@ class ChatGPTService:
             )
 
             chatbot[-1] = (prompt_show_user, gpt_response)
-            history.append(prompt_show_user)
-            history.append(gpt_response)
+            # history.append(prompt_show_user)
+            # history.append(gpt_response)
             full_gpt_response += gpt_response
             yield chatbot, history, "Success", source_md  # show gpt output
         return full_gpt_response
 
     @staticmethod
-    def split_prompt_content(prompt: Prompt) -> list:
+    def split_prompt_content(prompt: Prompt, is_timestamp=False) -> list:
         """
         Split the prompt.prompt_main into multiple parts, each part is less than <content_token=3500> tokens
         Then return all prompts object
         """
         prompts = []
-        content_token = config.get('openai').get('content_token')
-        temp_prompt_main = prompt.prompt_main
-        while True:
-            if len(temp_prompt_main) == 0:
-                break
-            elif len(temp_prompt_main) < content_token:
+        MAX_CONTENT_TOKEN = config.get('openai').get('content_token')
+        if not is_timestamp:
+            temp_prompt_main = prompt.prompt_main
+            while True:
+                if len(temp_prompt_main) == 0:
+                    break
+                elif len(temp_prompt_main) < MAX_CONTENT_TOKEN:
+                    prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
+                                          prompt_main=temp_prompt_main,
+                                          prompt_suffix=prompt.prompt_suffix))
+                    break
+                else:
+                    first, last = get_first_n_tokens_and_remaining(temp_prompt_main, MAX_CONTENT_TOKEN)
+                    temp_prompt_main = last
+                    prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
+                                          prompt_main=first,
+                                          prompt_suffix=prompt.prompt_suffix))
+        else:
+            # A bit ugly to handle the timestamped version and non-timestamped version in this matter.
+            # But make a working software first.
+            paragraphs_split_by_timestamp = []
+            for sentence in prompt.prompt_main.split('\n'):
+                if sentence == "":
+                    continue
+
+                def is_start_with_timestamp(sentence):
+                    return sentence[0].isdigit() and (sentence[1] == ":" or sentence[2] == ":")
+
+                if is_start_with_timestamp(sentence):
+                    paragraphs_split_by_timestamp.append(sentence)
+                else:
+                    paragraphs_split_by_timestamp[-1] += sentence
+
+            def extract_timestamp(paragraph):
+                return paragraph.split(' ')[0]
+
+            def extract_minute(timestamp):
+                return int(timestamp.split(':')[0])
+
+            def append_prompt(prompt, prompts, temp_minute, temp_paragraph, temp_timestamp):
                 prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
-                                      prompt_main=temp_prompt_main,
-                                      prompt_suffix=prompt.prompt_suffix))
-                break
-            else:
-                first, last = get_first_n_tokens_and_remaining(temp_prompt_main, content_token)
-                temp_prompt_main = last
-                prompts.append(Prompt(prompt_prefix=prompt.prompt_prefix,
-                                      prompt_main=first,
-                                      prompt_suffix=prompt.prompt_suffix))
+                                      prompt_main=temp_paragraph,
+                                      prompt_suffix=prompt.prompt_suffix.format(first_timestamp=temp_timestamp,
+                                                                                second_minute=temp_minute + 2,
+                                                                                third_minute=temp_minute + 4)
+                                      # this formatting gives better result in one-shot learning / example.
+                                      # ie if it is the second+ splitted prompt, don't use 0:00 as the first timestamp example
+                                      #    use the exact first timestamp of the splitted prompt
+                                      ))
+
+            token_num_list = list(map(get_token, paragraphs_split_by_timestamp))  # e.g. [159, 160, 158, ..]
+            timestamp_list = list(map(extract_timestamp, paragraphs_split_by_timestamp))  # e.g. ['0:00', '0:32', '1:03' ..]
+            minute_list = list(map(extract_minute, timestamp_list))  # e.g. [0, 0, 1, ..]
+
+            accumulated_token_num, temp_paragraph, temp_timestamp, temp_minute = 0, "", timestamp_list[0], minute_list[0]
+            for i, paragraph in enumerate(paragraphs_split_by_timestamp):
+                curr_token_num = token_num_list[i]
+                if accumulated_token_num + curr_token_num > MAX_CONTENT_TOKEN:
+                    append_prompt(prompt, prompts, temp_minute, temp_paragraph, temp_timestamp)
+                    accumulated_token_num, temp_paragraph = 0, ""
+                    try:
+                        temp_timestamp, temp_minute = timestamp_list[i + 1], minute_list[i + 1]
+                    except IndexError:
+                        temp_timestamp, temp_minute = timestamp_list[i], minute_list[i]  # should be trivial. No more next part
+                else:
+                    temp_paragraph += paragraph + "\n"
+                    accumulated_token_num += curr_token_num
+            if accumulated_token_num > 0:  # add back remaining
+                append_prompt(prompt, prompts, temp_minute, temp_paragraph, temp_timestamp)
         return prompts
 
     @staticmethod
@@ -276,8 +331,8 @@ class ChatGPTService:
 if __name__ == '__main__':
     import pickle
 
-    prompt: Prompt = pickle.load(open('prompt_obj.pkl', 'rb'))
-    prompts = ChatGPTService.split_prompt_content(prompt)
+    prompt: Prompt = pickle.load(open('prompt.pkl', 'rb'))
+    prompts = ChatGPTService.split_prompt_content(prompt, is_timestamp=True)
     for prompt in prompts:
         print("=====================================")
         print(prompt.prompt_prefix)

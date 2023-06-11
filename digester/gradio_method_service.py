@@ -264,9 +264,9 @@ Convert this into youtube summary.
 Separate for 2-5minutes chunk, maximum 20 words for one line.
 Start with the timestamp followed by the summarized text for that chunk.
 Example format:
-0:52 - This is the first part
-3:44 - This is the second part
-6:02 - This is the third part
+{first_timestamp} - This is the first part
+{second_minute}:44 - This is the second part
+{third_minute}:02 - This is the third part
 """)
 
     FINAL_SUMMARY_PROMPT = Prompt(
@@ -340,7 +340,6 @@ Instructions: (step by step instructions)
                         cls.CLASSIFIER_PROMPT.prompt_main.format(transcript=youtube_data.full_content[:TRANSCRIPT_CHAR_LIMIT]),
                         cls.CLASSIFIER_PROMPT.prompt_suffix
                         )
-
         prompt_show_user = "Classify the video type for me"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
                                                                       source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
@@ -362,7 +361,8 @@ Instructions: (step by step instructions)
                         )
         prompt_show_user = "Generate the timestamped summary"
         response = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs.chatbot, g_inputs.history, g_inputs.apikey_textbox,
-                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}")
+                                                                      source_md=f"[{g_inputs.source_textbox}] {g_inputs.source_target_textbox}",
+                                                                      is_timestamp=True)
         return response
 
     @classmethod
