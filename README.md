@@ -21,7 +21,7 @@ The prompt engineering is **chained and tuned** so that is result is of high qua
 - it shown the summary with and specific 17 things correctly. 
 
 
-![final_full_summary](/img/final_full_summary.png)
+![n_things_example](/img/n_things_example.png)
 
 **LLM Loading in progress screen - chained prompt engineering, batched inference, etc.**
 
