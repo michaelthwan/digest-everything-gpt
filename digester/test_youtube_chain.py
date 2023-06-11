@@ -35,6 +35,11 @@ class VideoExample:
         return VideoExample.get_youtube_data("", video_id)
 
     @staticmethod
+    def get_nthings_8_haits():
+        video_id = "IScN1SOcj7A"
+        return VideoExample.get_youtube_data("", video_id)
+
+    @staticmethod
     def get_tutorial_skincare():
         video_id = "OrElyY7MFVs"
         return VideoExample.get_youtube_data("", video_id)
@@ -56,8 +61,8 @@ class YoutubeTestChain:
 
     def test_youtube_classifier(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
         iter = YoutubeChain.execute_classifer_chain(gradio_inputs, youtube_data)
-        print(next(iter))
-        print(next(iter))
+        while True:
+            next(iter)
 
     def test_youtube_timestamped_summary(self, gradio_inputs: GradioInputs, youtube_data: YoutubeData):
         iter = YoutubeChain.execute_timestamped_summary_chain(gradio_inputs, youtube_data)
@@ -76,15 +81,15 @@ if __name__ == '__main__':
     assert api_key
 
     gradio_inputs = GradioInputs(apikey_textbox=api_key, source_textbox="", source_target_textbox="", qa_textbox="", chatbot=[], history=[])
-    youtube_data: YoutubeData = VideoExample.get_tutorial_skincare()
+    youtube_data: YoutubeData = VideoExample.get_nthings_8_haits()
 
     youtube_test_chain = YoutubeTestChain(api_key)
     # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
-    # youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
+    youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
     # video_type = "N things"
-    video_type = "Tutorials"
+    # video_type = "Tutorials"
     # video_type = "Others"
-    youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
+    # youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"

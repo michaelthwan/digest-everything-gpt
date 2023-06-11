@@ -82,7 +82,7 @@ class LLMService:
             "frequency_penalty": 0,
         }
 
-        print(f"generate_payload() LLM: {LLM_MODEL}, conversation_cnt: {conversation_cnt} : {inputs}")
+        print(f"generate_payload() LLM: {LLM_MODEL}, conversation_cnt: {conversation_cnt}")
         print(f"\n[[[[[INPUT]]]]]\n{inputs}")
         print(f"[[[[[OUTPUT]]]]]")
         return headers, payload
