@@ -7,7 +7,7 @@ from digester.chatgpt_service import LLMService, ChatGPTService
 from digester.util import Prompt, provide_text_with_css, GradioInputs
 
 WAITING_FOR_TARGET_INPUT = "Waiting for target source input"
-RESPONSE_SUFFIX = "⚡Powered by DigestEverythingGPT in github"
+RESPONSE_SUFFIX = "⚡Powered by github.com/michaelthwan/digest-everything-gpt"
 
 
 class GradioMethodService:
@@ -65,8 +65,8 @@ class GradioMethodService:
     @staticmethod
     def ask_question(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history):
         g_inputs = GradioInputs(apikey_textbox, source_textbox, target_source_textbox, qa_textbox, gpt_model_textbox, language_textbox, chatbot, history)
-        msg = f"ask_question(`{qa_textbox}`)"
-        g_inputs.chatbot.append(("test prompt query", msg))
+        prompt = f"ask_question(`{qa_textbox}`)"
+        g_inputs.chatbot.append((prompt, "Currently the ask feature is not supported yet"))
         yield g_inputs.chatbot, g_inputs.history, 'Normal'
 
     @staticmethod
@@ -306,12 +306,12 @@ Instructions: (step by step instructions)
         video_type = yield from YoutubeChain.execute_classifer_chain(g_inputs, text_data)
         final_summary = yield from YoutubeChain.execute_final_summary_chain(g_inputs, text_data, video_type)
         full_summary = f"""
-{provide_text_with_css("DONE", "green")}
-Video: {text_data.title}
-# Timestamped summary
+{provide_text_with_css("✅DONE", "green")}
+🎞️Video: {text_data.title}
+📝Timestamped summary
 {timestamped_summary}
 
-# Summary
+📝Summary
 {final_summary}
 
 {RESPONSE_SUFFIX}

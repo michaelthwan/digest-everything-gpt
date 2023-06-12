@@ -67,15 +67,3 @@ DigestEverything-GPT is licensed under the MIT License.
 # Acknowledgements
 
 - chatgpt_academic for gradio code framework
-
----
-title: Digest Everything Gpt
-emoji: 💻
-colorFrom: green
-colorTo: green
-sdk: gradio
-sdk_version: 3.24.1
-app_file: main.py
-pinned: true
-license: mit
----

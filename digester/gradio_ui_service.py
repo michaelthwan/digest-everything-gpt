@@ -3,7 +3,15 @@ import markdown
 
 from digester.gradio_method_service import GradioMethodService
 
-title_html = "<h1 align=\"center\">DigestEverythingGPT</h1>"
+title_html = """
+<h1 align=\"center\">DigestEverythingGPT</h1>
+<p align=\"center\">Version 20230613 (
+    <a href="https://github.com/michaelthwan/digest-everything-gpt"><i class="fa fa-github"></i> Github</a>
+    ) (
+    <a href="https://huggingface.co/spaces/michaelthwan/digest-everything-gpt"> HFSpace</a>
+    )<br>
+    Please give me a star in github if you like it 🌟! Your feedback will help us to improve</p>
+"""
 
 cancel_handles = []
 
@@ -104,7 +112,7 @@ class GradioUIService:
             analyze_code_base_args = dict(fn=functions[fn_key]["function"], inputs=inputs, outputs=[*outputs, folder_md])
             cancel_handles.append(source_target_textbox.submit(**analyze_code_base_args))
             # qa_textbox
-            fn_key = "Ask (not supported now)"
+            fn_key = "Ask"
             ask_args = dict(fn=functions[fn_key]["function"], inputs=inputs, outputs=outputs)
             cancel_handles.append(qa_textbox.submit(**ask_args))
             # all buttons
