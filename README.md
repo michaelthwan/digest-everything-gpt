@@ -7,6 +7,10 @@ documents.
 The prompt engineering is **chained and tuned** so that is result is of high quality and fast. It is not a simple single
 query and response tool.
 
+# Live website
+
+https://huggingface.co/spaces/michaelthwan/digest-everything-gpt
+
 # Showcases
 
 **Example of summary**
@@ -32,24 +36,20 @@ query and response tool.
 
 ![multi_language](/img/multi_language.png)
 
-# Live website
-
-[TODO]
-
 # Features
 
 - **Content Summarization**:
     - Automatically generate concise summaries of various types of content, allowing users to save time and make
       informed decisions for in-depth engagement.
     - Chained/Batched/Advanced prompt engineering for great quality/faster results.
-- **Interactive "Ask" Feature** (in progress):
-    - Users can pose questions to the tool and receive answers extracted from specific sections within the full content.
 - **Cross-Medium Support**:
     - DigestEverythingGPT is designed to work with a wide range of content mediums.
     - Currently, the tool supports
         - YouTube videos [beta]
         - podcasts (in progress)
         - PDF documents (in progress)
+- **Interactive "Ask" Feature** (in progress):
+    - Users can pose questions to the tool and receive answers extracted from specific sections within the full content.
 
 # Installation
 
@@ -64,3 +64,18 @@ python main.py
 
 DigestEverything-GPT is licensed under the MIT License.
 
+# Acknowledgements
+
+- chatgpt_academic for gradio code framework
+
+---
+title: Digest Everything Gpt
+emoji: 💻
+colorFrom: green
+colorTo: green
+sdk: gradio
+sdk_version: 3.24.1
+app_file: main.py
+pinned: true
+license: mit
+---

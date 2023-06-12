@@ -104,7 +104,7 @@ class GradioUIService:
             analyze_code_base_args = dict(fn=functions[fn_key]["function"], inputs=inputs, outputs=[*outputs, folder_md])
             cancel_handles.append(source_target_textbox.submit(**analyze_code_base_args))
             # qa_textbox
-            fn_key = "Ask"
+            fn_key = "Ask (not supported now)"
             ask_args = dict(fn=functions[fn_key]["function"], inputs=inputs, outputs=outputs)
             cancel_handles.append(qa_textbox.submit(**ask_args))
             # all buttons
