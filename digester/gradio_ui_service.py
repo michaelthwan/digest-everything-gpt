@@ -5,12 +5,15 @@ from digester.gradio_method_service import GradioMethodService
 
 title_html = """
 <h1 align=\"center\">DigestEverythingGPT</h1>
-<p align=\"center\">Version 20230613 (
-    <a href="https://github.com/michaelthwan/digest-everything-gpt"><i class="fa fa-github"></i> Github</a>
-    ) (
-    <a href="https://huggingface.co/spaces/michaelthwan/digest-everything-gpt"> HFSpace</a>
-    )<br>
-    Please give me a star in github if you like it 🌟! Your feedback will help us to improve</p>
+<p align=\"center\">
+DigestEverythingGPT leverages ChatGPT/LLMs to help users quickly understand essential information from various forms of content, such as podcasts, YouTube videos, and PDF documents.<br>
+The prompt engineering is chained and tuned so that is result is of high quality and fast. It is not a simple single query and response tool.<br>
+Version 20230614 (
+<a href="https://github.com/michaelthwan/digest-everything-gpt"><i class="fa fa-github"></i> Github</a>
+) (
+<a href="https://huggingface.co/spaces/michaelthwan/digest-everything-gpt"> HFSpace</a>
+)<br>
+Please give me a star in github if you like it 🌟! Your feedback will help us to improve</p>
 """
 
 cancel_handles = []

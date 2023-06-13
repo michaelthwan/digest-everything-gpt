@@ -130,7 +130,7 @@ class ChatGPTService:
             # seems no need chat history now (have it later?)
             # history.append(prompt_show_user)
             # history.append(gpt_response)
-            full_gpt_response += gpt_response
+            full_gpt_response += gpt_response + "\n"
             yield chatbot, history, "Success", source_md  # show gpt output
         return full_gpt_response, len(prompts)
 
