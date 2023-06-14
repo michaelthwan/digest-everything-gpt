@@ -46,7 +46,7 @@ class VideoExample:
 
 
 class YoutubeTestChain:
-    def __init__(self, api_key: str, gpt_model="gpt-3.5-turbo"):
+    def __init__(self, api_key: str, gpt_model):
         self.api_key = api_key
         self.gpt_model = gpt_model
 

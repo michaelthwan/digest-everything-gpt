@@ -4,7 +4,7 @@ from pathlib import Path
 import tiktoken
 import yaml
 
-tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
+tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-16k")
 
 
 class GradioInputs:

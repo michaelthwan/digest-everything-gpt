@@ -8,7 +8,7 @@ title_html = """
 <p align=\"center\">
 DigestEverythingGPT leverages ChatGPT/LLMs to help users quickly understand essential information from various forms of content, such as podcasts, YouTube videos, and PDF documents.<br>
 The prompt engineering is chained and tuned so that is result is of high quality and fast. It is not a simple single query and response tool.<br>
-Version 20230614 (
+Version 20230614_2 (
 <a href="https://github.com/michaelthwan/digest-everything-gpt"><i class="fa fa-github"></i> Github</a>
 ) (
 <a href="https://huggingface.co/spaces/michaelthwan/digest-everything-gpt"> HFSpace</a>
@@ -71,8 +71,8 @@ class GradioUIService:
                     with gr.Accordion("Options", open=True):
                         with gr.Row():
                             gpt_model_textbox = gr.Dropdown(
-                                ["gpt-3.5-turbo", "gpt-4"],
-                                value="gpt-3.5-turbo", label="GPT model", info="gpt-3.5 is cheaper.\nBut if you found that the result is not good, try gpt-4 \nYour API key must support gpt-4"
+                                ["gpt-3.5-turbo-16k", "gpt-4"],
+                                value="gpt-3.5-turbo-16k", label="GPT model", info="gpt-3.5 is cheaper.\nBut if you found that the result is not good, try gpt-4 \nYour API key must support gpt-4"
                             )
                         with gr.Row():
                             language_textbox = gr.Dropdown(

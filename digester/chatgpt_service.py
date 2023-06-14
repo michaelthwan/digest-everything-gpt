@@ -213,7 +213,7 @@ class ChatGPTService:
         return prompts
 
     @staticmethod
-    def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, gpt_model="gpt-3.5-turbo", history=[]):
+    def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, gpt_model, history=[]):
         """
         Handling
         - token exceeding -> split input
@@ -272,7 +272,7 @@ class ChatGPTService:
         return gpt_response
 
     @staticmethod
-    def single_rest_call_chatgpt(api_key, prompt_str: str, gpt_model="gpt-3.5-turbo", history=[], observe_window=None):
+    def single_rest_call_chatgpt(api_key, prompt_str: str, gpt_model, history=[], observe_window=None):
         """
         Single call chatgpt only. No handling on multiple call (it should be in upper caller multi_call_chatgpt_with_handling())
         - Support stream=True
