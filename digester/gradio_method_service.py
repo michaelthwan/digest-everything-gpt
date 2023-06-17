@@ -240,12 +240,12 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
 [Transcript with timestamp]
 """,
         prompt_main="""
-{transcript_with_ts}
+{transcript_with_ts} 
 """,
         prompt_suffix="""
 [TASK]
 Convert this into youtube summary. 
-Separate for 2-5minutes chunk, maximum 20 words for one line.
+Separate for 2-5 minutes chunk, maximum 6 words as a noun for one line.
 Start with the timestamp followed by the summarized text for that chunk.
 Must use language: {language}
 
@@ -292,10 +292,13 @@ Additionally, since it is a Tutorial video, provide step by step instructions fo
     }
     FINAL_SUMMARY_FORMAT_CONSTRAINTS = {
         "N things": """
-Items mentioned in the video: (content of N things)
+Items mentioned in the video: (content of N things. Put different appropriate emoji in the beginning for each bullet point)
 """,
         "Tutorials": """
-Instructions: (step by step instructions)
+Instructions: (step by step instructions, up to five concise bullet points, less than 20 words. Put different appropriate emoji for each bullet point)
+""",
+        "Others": """
+Highlights: [Emoji] (content of highlights, up to five concise bullet points, less than 20 words. Put different appropriate emoji for each bullet point)
 """,
     }
 
@@ -353,11 +356,11 @@ Instructions: (step by step instructions)
 
     @classmethod
     def execute_final_summary_chain(cls, g_inputs: GradioInputs, youtube_data: YoutubeData, video_type):
+        format_constraint = cls.FINAL_SUMMARY_FORMAT_CONSTRAINTS[video_type]
         if video_type in cls.FINAL_SUMMARY_TASK_CONSTRAINTS.keys():
             task_constraint = cls.FINAL_SUMMARY_TASK_CONSTRAINTS[video_type]
-            format_constraint = cls.FINAL_SUMMARY_FORMAT_CONSTRAINTS[video_type]
         else:
-            task_constraint, format_constraint = "", ""
+            task_constraint = ""
         prompt = Prompt(
             cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
             cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=youtube_data.full_content),

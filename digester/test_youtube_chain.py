@@ -44,6 +44,11 @@ class VideoExample:
         video_id = "OrElyY7MFVs"
         return VideoExample.get_youtube_data("", video_id)
 
+    @staticmethod
+    def get_procrastination_long_vid():
+        video_id = "lF_KWLfQFs8"
+        return VideoExample.get_youtube_data("", video_id)
+
 
 class YoutubeTestChain:
     def __init__(self, api_key: str, gpt_model):
@@ -79,18 +84,20 @@ class YoutubeTestChain:
 if __name__ == '__main__':
     config = get_config()
     api_key = config.get("openai").get("api_key")
+    GPT_MODEL = "gpt-3.5-turbo-16k"
     assert api_key
 
-    gradio_inputs = GradioInputs(apikey_textbox=api_key, source_textbox="", source_target_textbox="", qa_textbox="", chatbot=[], history=[])
+
+    gradio_inputs = GradioInputs(apikey_textbox=api_key, gpt_model_textbox=GPT_MODEL, source_textbox="", source_target_textbox="", qa_textbox="", language_textbox="en-US", chatbot=[], history=[])
     youtube_data: YoutubeData = VideoExample.get_nthings_8_habits()
 
-    youtube_test_chain = YoutubeTestChain(api_key)
+    youtube_test_chain = YoutubeTestChain(api_key, GPT_MODEL)
     # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
-    youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
+    # youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
     # video_type = "N things"
     # video_type = "Tutorials"
-    # video_type = "Others"
-    # youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
+    video_type = "Others"
+    youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"
