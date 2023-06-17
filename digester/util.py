@@ -22,6 +22,7 @@ class GradioInputs:
         self.language_textbox = language_textbox
         self.chatbot = chatbot
         self.history = history
+        self.source_md = f"[{self.source_textbox}] {self.source_target_textbox}"
 
 
 class Prompt:

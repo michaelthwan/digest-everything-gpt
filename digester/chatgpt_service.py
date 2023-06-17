@@ -97,6 +97,11 @@ class ChatGPTService:
         yield chatbot, history, status, source_md
 
     @staticmethod
+    def say_using_ginputs(user_say, chatbot_say, status, g_inputs: GradioInputs, is_append=True):
+        yield from ChatGPTService.say(user_say, chatbot_say,
+                                      g_inputs.chatbot, g_inputs.history, status, g_inputs.source_md, is_append)
+
+    @staticmethod
     def get_reduce_token_percent(text):
         try:
             pattern = r"(\d+)\s+tokens\b"

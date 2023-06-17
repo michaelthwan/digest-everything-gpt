@@ -289,6 +289,8 @@ Additionally, since it is a N things video, the summary should include the N ite
         "Tutorials": """
 Additionally, since it is a Tutorial video, provide step by step instructions for the tutorial. 
 """,
+        "Others": """
+""",
     }
     FINAL_SUMMARY_FORMAT_CONSTRAINTS = {
         "N things": """
@@ -334,10 +336,13 @@ Highlights: [Emoji] (content of highlights, up to five concise bullet points, le
                         )
         prompt_show_user = "Classify the video type for me"
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
+        yield from ChatGPTService.say_using_ginputs(None, f"{provide_text_with_css('WARN', 'yellow')} test", "Success", g_inputs)
         try:
             video_type = json.loads(response)['type']
+            if video_type not in cls.FINAL_SUMMARY_TASK_CONSTRAINTS.keys():
+                raise Exception(f"Video type is not valid: {video_type}. Use default: Others")
         except Exception as e:
-            # TODO: Exception handling, show error in UI
+            yield from ChatGPTService.say_using_ginputs(None, f"{provide_text_with_css('WARN', 'yellow')} {e}", "Success", g_inputs)
             video_type = 'Others'
         return video_type
 
