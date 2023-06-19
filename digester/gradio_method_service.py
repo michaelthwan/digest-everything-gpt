@@ -257,11 +257,6 @@ Example format:
 
     FINAL_SUMMARY_PROMPT = Prompt(
         prompt_prefix="""
-[VIDEO_TYPE]
-This is the video type
-N things: The youtube will shows N items that will be described in the video. For example "17 cheap purchases that save me time", "10 AMAZING Ways AutoGPT Is Being Used RIGHT NOW"
-Tutorials: how to do or make something in order to teach a skill or how to use a product or software
-
 [TITLE]
 {title}
 
@@ -272,7 +267,7 @@ Tutorials: how to do or make something in order to teach a skill or how to use a
 """,
         prompt_suffix="""
 [TASK]
-Summarize the above transcript. Step by step showing points for the main concepts.
+Summarize the above points under 30 words. Step by step showing points for the main concepts.
 Use markdown format.
 Must use language: {language}
 {task_constraint} 
@@ -300,7 +295,14 @@ Items mentioned in the video: (content of N things. Put different appropriate em
 Instructions: (step by step instructions, up to five concise bullet points, less than 20 words. Put different appropriate emoji for each bullet point)
 """,
         "Others": """
-Highlights: [Emoji] (content of highlights, up to five concise bullet points, less than 20 words. Put different appropriate emoji for each bullet point)
+Highlights:
+- [Emoji] (content of highlights)
+- [Emoji] (content of highlights)
+- [Emoji] (content of highlights)
+- [Emoji] (content of highlights)
+- [Emoji] (content of highlights)
+
+For highlight, up to five concise bullet points, less than 15 words for each bullet point. Put different appropriate emoji for each bullet point
 """,
     }
 
