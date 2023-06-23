@@ -1,11 +1,15 @@
 # DigestEverythingGPT
 
+
+
 DigestEverythingGPT provides world-class content summarization/query tool that leverages ChatGPT/LLMs to help users
 quickly understand essential information from various forms of content, such as podcasts, YouTube videos, and PDF
 documents.
 
 The prompt engineering is **chained and tuned** so that is result is of high quality and fast. It is not a simple single
 query and response tool.
+
+Please leave me a star🌟 if you like this project!
 
 # Live website
 
