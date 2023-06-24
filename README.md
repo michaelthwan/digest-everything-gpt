@@ -40,6 +40,8 @@ https://huggingface.co/spaces/michaelthwan/digest-everything-gpt
 
 ![multi_language](/img/multi_language.png)
 
+More showcases: [SHOWCASE.md](SHOWCASE.md)
+
 # Features
 
 - **Content Summarization**:

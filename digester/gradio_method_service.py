@@ -343,7 +343,6 @@ Must use language {language} as output
                         )
         prompt_show_user = "Classify the video type for me"
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
-        yield from ChatGPTService.say_using_ginputs(None, f"{provide_text_with_css('WARN', 'yellow')} test", "Success", g_inputs)
         try:
             video_type = json.loads(response)['type']
             if video_type not in cls.FINAL_SUMMARY_TASK_CONSTRAINTS.keys():
