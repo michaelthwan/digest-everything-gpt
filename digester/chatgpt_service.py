@@ -219,65 +219,13 @@ class ChatGPTService:
 
     @staticmethod
     def single_call_chatgpt_with_handling(source_md, prompt_str: str, prompt_show_user: str, chatbot, api_key, gpt_model, history=[]):
-        """
-        Handling
-        - token exceeding -> split input
-        - timeout -> retry 2 times
-        - other error -> retry 2 times
-        """
-
-        TIMEOUT_SECONDS, MAX_RETRY = config['openai']['timeout_sec'], config['openai']['max_retry']
-        # When multi-threaded, you need a mutable structure to pass information between different threads
-        # list is the simplest mutable structure, we put gpt output in the first position, the second position to pass the error message
-        mutable_list = [None, '']  # [gpt_output, error_message]
-
-        # multi-threading worker
-        def mt(prompt_str, history):
-            while True:
-                try:
-                    mutable_list[0] = ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str, gpt_model, history=history)
-                    break
-                except ConnectionAbortedError as token_exceeded_error:
-                    # # Try to calculate the ratio and keep as much text as possible
-                    # print(f'[Local Message] Token exceeded: {token_exceeded_error}.')
-                    # p_ratio, n_exceed = ChatGPTService.get_reduce_token_percent(str(token_exceeded_error))
-                    # if len(history) > 0:
-                    #     history = [his[int(len(his) * p_ratio):] for his in history if his is not None]
-                    # else:
-                    #     prompt_str = prompt_str[:int(len(prompt_str) * p_ratio)]
-                    # mutable_list[1] = f'Warning: text too long will be truncated. Token exceeded：{n_exceed}，Truncation ratio: {(1 - p_ratio):.0%}。'
-                    mutable_list[0] = TOKEN_EXCEED_MSG
-                except TimeoutError as e:
-                    mutable_list[0] = TIMEOUT_MSG
-                    raise TimeoutError
-                except Exception as e:
-                    mutable_list[0] = f'{provide_text_with_css("ERROR", "red")} Exception: {str(e)}.'
-                    raise RuntimeError(f'[ERROR] Exception: {str(e)}.')
-                # TODO retry
-
-        # Create a new thread to make http requests
-        thread_name = threading.Thread(target=mt, args=(prompt_str, history))
-        thread_name.start()
-        # The original thread is responsible for continuously updating the UI, implementing a timeout countdown, and waiting for the new thread's task to complete
-        cnt = 0
-        while thread_name.is_alive():
-            cnt += 1
-            is_append = False
-            if cnt == 1:
-                is_append = True
-            yield from ChatGPTService.say(prompt_show_user, f"""
-{provide_text_with_css("PROCESSING...", "blue")} {mutable_list[1]}waiting gpt response {cnt}/{TIMEOUT_SECONDS * 2 * (MAX_RETRY + 1)}{''.join(['.'] * (cnt % 4))} 
-{mutable_list[0]}
-            """, chatbot, history, 'Normal', source_md, is_append)
-            time.sleep(1)
-        # Get the output of gpt out of the mutable
-        gpt_response = mutable_list[0]
+        gpt_response = yield from ChatGPTService.single_rest_call_chatgpt(api_key, prompt_str, gpt_model, chatbot, history=history)
         if 'ERROR' in gpt_response:
             raise Exception
         return gpt_response
 
     @staticmethod
-    def single_rest_call_chatgpt(api_key, prompt_str: str, gpt_model, history=[], observe_window=None):
+    def single_rest_call_chatgpt(api_key, prompt_str: str, gpt_model, chatbot, history=[], observe_window=None):
         """
         Single call chatgpt only. No handling on multiple call (it should be in upper caller multi_call_chatgpt_with_handling())
         - Support stream=True
@@ -323,7 +271,7 @@ class ChatGPTService:
             if "role" in delta: continue
             if "content" in delta:
                 result += delta["content"]
-                print(delta["content"], end='')
+                yield from ChatGPTService.say(None, result, chatbot, history, "Success", "", is_append=False)
                 if observe_window is not None: observe_window[0] += delta["content"]
             else:
                 raise RuntimeError("Unexpected Json structure: " + delta)
