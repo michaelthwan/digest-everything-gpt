@@ -8,7 +8,7 @@ title_html = """
 <p align=\"center\">
 DigestEverythingGPT leverages ChatGPT/LLMs to help users quickly understand essential information from various forms of content, such as podcasts, YouTube videos, and PDF documents.<br>
 The prompt engineering is chained and tuned so that is result is of high quality and fast. It is not a simple single query and response tool.<br>
-Version 20230619 (
+Version 20230624 (
 <a href="https://github.com/michaelthwan/digest-everything-gpt"><i class="fa fa-github"></i> Github</a>
 ) (
 <a href="https://huggingface.co/spaces/michaelthwan/digest-everything-gpt"> HFSpace</a>

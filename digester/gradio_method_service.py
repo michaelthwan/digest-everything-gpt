@@ -245,9 +245,12 @@ Give the video type with JSON format like {"type": "N things"}, and exclude othe
         prompt_suffix="""
 [TASK]
 Convert this into youtube summary. 
-Separate for 2-5 minutes chunk, maximum 6 words as a noun for one line.
+Combine and merge timestamp to for 2-5 minutes chunk. Maximum {word_limit} using noun for one line. Must not exceed the limit
 Start with the timestamp followed by the summarized text for that chunk.
 Must use language: {language}
+Strictly follow the task rules especially for language and character limit
+
+Maximum {word_limit} using noun for one line. Using noun, not sentence
 
 Example format:
 {first_timestamp} - This is the first part
@@ -353,9 +356,18 @@ For highlight, up to five concise bullet points, less than 15 words for each bul
         transcript_with_ts = ""
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
+
+        def get_char_limit(language: str):
+            """If Chinese/Japan/Korean, use character limit. Otherwise, use word limit"""
+            if 'zh' in language or language in ["ja-JP", "ko-KR"]:
+                return f"15 {language} characters"
+            else:
+                return "8 words"
+
         prompt = Prompt(cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_main.format(transcript_with_ts=transcript_with_ts),
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix.replace("{language}", g_inputs.language_textbox)
+                        .replace("{word_limit}", get_char_limit(g_inputs.language_textbox))
                         )
         prompt_show_user = "Generate the timestamped summary"
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs, is_timestamp=True)

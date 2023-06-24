@@ -271,6 +271,7 @@ class ChatGPTService:
             if "role" in delta: continue
             if "content" in delta:
                 result += delta["content"]
+                print(delta["content"], end='')
                 yield from ChatGPTService.say(None, result, chatbot, history, "Success", "", is_append=False)
                 if observe_window is not None: observe_window[0] += delta["content"]
             else:
