@@ -96,15 +96,15 @@ if __name__ == '__main__':
     gradio_inputs = GradioInputs(apikey_textbox=api_key, gpt_model_textbox=GPT_MODEL,
                                  source_textbox="", source_target_textbox="",
                                  qa_textbox="", language_textbox=language, chatbot=[], history=[])
-    youtube_data: YoutubeData = VideoExample.get_wealth_CN_long_vid()
+    youtube_data: YoutubeData = VideoExample.get_nthings_10_autogpt()
 
     youtube_test_chain = YoutubeTestChain(api_key, GPT_MODEL)
     # youtube_test_chain.test_youtube_classifier(gradio_inputs, youtube_data)
-    youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
+    # youtube_test_chain.test_youtube_timestamped_summary(gradio_inputs, youtube_data)
     # video_type = "N things"
     # video_type = "Tutorials"
-    # video_type = "Others"
-    # youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
+    video_type = "Others"
+    youtube_test_chain.test_youtube_final_summary(gradio_inputs, youtube_data, video_type)
 
     # converter = Everything2Text4Prompt(openai_api_key="")
     # source_textbox = "youtube"

@@ -273,6 +273,7 @@ Example format:
 Summarize the above points under 30 words. Step by step showing points for the main concepts.
 Use markdown format.
 Must use language: {language}
+Strictly follow the task rules and use {language} language
 {task_constraint} 
 
 The format is like:
@@ -305,7 +306,8 @@ Highlights:
 - [Emoji] (content of highlights)
 - [Emoji] (content of highlights)
 
-For highlight, up to five concise bullet points, less than 15 words for each bullet point. Put different appropriate emoji for each bullet point
+For highlight, up to five concise bullet points, less than {char_limit} for each bullet point. Put different appropriate emoji for each bullet point
+Must use language {language} as output
 """,
     }
 
@@ -357,7 +359,7 @@ For highlight, up to five concise bullet points, less than 15 words for each bul
         for entry in youtube_data.ts_transcript_list:
             transcript_with_ts += f"{int(entry['start'] // 60)}:{int(entry['start'] % 60):02d} {entry['text']}\n"
 
-        def get_char_limit(language: str):
+        def _get_char_limit(language: str):
             """If Chinese/Japan/Korean, use character limit. Otherwise, use word limit"""
             if 'zh' in language or language in ["ja-JP", "ko-KR"]:
                 return f"15 {language} characters"
@@ -367,7 +369,7 @@ For highlight, up to five concise bullet points, less than 15 words for each bul
         prompt = Prompt(cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_main.format(transcript_with_ts=transcript_with_ts),
                         cls.TIMESTAMPED_SUMMARY_PROMPT.prompt_suffix.replace("{language}", g_inputs.language_textbox)
-                        .replace("{word_limit}", get_char_limit(g_inputs.language_textbox))
+                        .replace("{word_limit}", _get_char_limit(g_inputs.language_textbox))
                         )
         prompt_show_user = "Generate the timestamped summary"
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs, is_timestamp=True)
@@ -380,10 +382,19 @@ For highlight, up to five concise bullet points, less than 15 words for each bul
             task_constraint = cls.FINAL_SUMMARY_TASK_CONSTRAINTS[video_type]
         else:
             task_constraint = ""
+        def _get_char_limit(language):
+            """If Chinese/Japan/Korean, use character limit. Otherwise, use word limit"""
+            if 'zh' in language or language in ["ja-JP", "ko-KR"]:
+                return f"30 {language} characters"
+            else:
+                return "15 words"
+
         prompt = Prompt(
             cls.FINAL_SUMMARY_PROMPT.prompt_prefix.format(title=youtube_data.title),
             cls.FINAL_SUMMARY_PROMPT.prompt_main.format(transcript=youtube_data.full_content),
-            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint, format_constraint=format_constraint, language=g_inputs.language_textbox)
+            cls.FINAL_SUMMARY_PROMPT.prompt_suffix.format(task_constraint=task_constraint,
+                                                          format_constraint=format_constraint.replace("{char_limit}", _get_char_limit(g_inputs.language_textbox)).replace("{language}", g_inputs.language_textbox),
+                                                          language=g_inputs.language_textbox)
         )
         prompt_show_user = "Generate the final summary"
         response, len_prompts = yield from ChatGPTService.trigger_callgpt_pipeline(prompt, prompt_show_user, g_inputs)
