@@ -4,4 +4,4 @@ tiktoken>=0.3.3
 openai
 Markdown
 latex2mathml
-everything2text4prompt
+everything2text4prompt==0.0.15
